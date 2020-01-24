@@ -1,1 +1,25 @@
-<h1>Hello</h1>
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Pocket Tram</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1 id="title", onclick="reset();">Välj plats</h1>
+    <div id="setup">
+        <ul id="choose">
+            <li onclick="choose('huset');"><h2>Huset</h2></li>
+            <li onclick="choose('lgh');"><h2>Lägenheten</h2></li>
+            <li onclick="choose('jt');"><h2>Järntorget</h2></li>
+            <li onclick="choose('chalmers');"><h2>Chalmers</h2></li>
+            <li onclick="choose('markland');"><h2>Marklandsgatan</h2></li>
+        </ul>
+    </div>
+    <div id="departures"></div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
