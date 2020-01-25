@@ -4,38 +4,48 @@ body {
     flex-direction: column; */
     margin: 0px;
     padding: 0px;
+    background-color: #eceff1;
 }
 
 .hide {
     display: none;
 }
 
-#choose  h2 {
-    color: darkslategray;
+.grouptitle {
+    text-align: center;
+    margin: 7px;
 }
 
-#choose h2:hover {
-    text-decoration: underline;
-    cursor: pointer;
+.line, .time {
+    text-align: center;
+}
+
+.direction, .time {
+    padding-left: 3px;
 }
 
 #title {
-    background-color: darkviolet;
-    color: gainsboro;
+    background-color: #d32f2f;
+    color: white;
     text-align: center;
     margin: 0px;
+}
+
+#departures > div {
+    border-top: #babdbe solid;
+    margin-bottom: 4px;
 }
 
 tr {
     width: 99vw;
     display: grid;
-    grid-template-columns: 1fr, 5fr, 2fr, 2fr, 2fr;
+    grid-template-columns: 1fr 4fr 2fr 2fr 2fr;
     grid-template-rows: 1fr;
-    padding-top: 3px;
-    padding-bottom: 3px;
+    margin: 0px;
 }
 
 tr > * {
-    margin: auto;
+    padding-top: 2px;
+    padding-bottom: 2px;
     grid-row: 1/2;
 }
