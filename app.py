@@ -2,7 +2,7 @@ from flask import Flask, request, send_file
 from vasttrafik import Auth, Reseplaneraren, TrafficSituations
 import json
 import dateutil.tz as tz
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -23,7 +23,12 @@ stopIDs = {
     "mariaplan": 9021014004730000,
     "kungssten": 9021014004100000,
     "vasaplatsen": 9021014007300000,
-    "kberget": 9021014004230000
+    "kberget": 9021014004230000,
+    "lindholmen": 9021014004490000,
+    "lpiren": 9021014004493000,
+    "svingeln": 9021014006480000,
+    "stenpiren": 9021014006242000,
+    "kungsstenvl": 9021014004101000
 }
 
 @app.route("/")
@@ -36,52 +41,77 @@ def req():
 
     if place == "lgh":
         return json.dumps({
-            "Ullevi Norra": getDeparture("lgh", "chalmers", first=True, dest="Chalmers")
+            "Ullevi Norra": getDeparture("lgh", "chalmers", countdown=False, first=True, dest="Chalmers"),
+            "Svingeln": getDeparture("svingeln", "lindholmen", first=True, dest="Lindholmen")
         })
 
     elif place == "huset":
         return json.dumps({
-            "Rengatan": getDeparture("huset1", "kungssten"), 
-            "Nya Varvsallén": getDeparture("huset2", "kungssten")
+            "Rengatan": getDeparture("huset1", "kungssten", countdown=False), 
+            "Nya Varvsallén": getDeparture("huset2", "kungssten", countdown=False),
+            "Kungssten": getDeparture("kungsstenvl", "lindholmen", countdown=False)
         })
     
     elif place == "markland":
         return json.dumps({
             "Till Kungssten": getDeparture("markland", "kungssten"),
             "Till Mariaplan (restid 6 min)": getDeparture("markland", "mariaplan"),
-            "Från Mariaplan": getDeparture("mariaplan", "kungssten")
+            "Från Mariaplan": getDeparture("mariaplan", "kungssten", offset=5)
         })
 
     elif place == "jt":
         return json.dumps({
-            "Mot Chalmers": getDeparture("jt", "chalmers", countdown=True),
-            "Mot Vasaplatsen": getDeparture("jt", "vasaplatsen", countdown=True),
-            "Mot Huset": getDeparture("jt", "kberget", special=True)
+            "Mot Chalmers": getDeparture("jt", "chalmers"),
+            "Mot Vasaplatsen": getDeparture("jt", "vasaplatsen"),
+            "Mot Huset": getDeparture("jt", "kberget"),
+            "Mot Lägenheten": getDeparture("jt", "lgh")
         })
 
     elif place == "chalmers":
         return json.dumps({
-            "Mot Ullevi Norra": getDeparture("chalmers", "lgh", countdown=True, first=True, dest="Ullevi Norra"),
+            "Mot Ullevi Norra": getDeparture("chalmers", "lgh", first=True, dest="Ullevi Norra"),
             "Mot Järntorget (restid 10 min)": getDeparture("chalmers", "jt"),
-            "Från Järntorget": getDeparture("jt", "huset1"),
-            "Mot Marklandsgatan (restid 10 min)": getDeparture("chalmers", "markland", countdown=True, first=True, dest="Marklandsgatan"),
-            "Från Marklandsgatan": getDeparture("markland", "kungssten")
+            "Från Järntorget": getDeparture("jt", "kberget", offset=9),
+            "Mot Marklandsgatan (restid 10 min)": getDeparture("chalmers", "markland", first=True, dest="Marklandsgatan"),
+            "Från Marklandsgatan": getDeparture("markland", "kungssten", offset=9)
+        })
+
+    elif place == "lindholmen":
+        return json.dumps({
+            "Mot Svingeln": getDeparture("lindholmen", "svingeln", first=True, dest="Svingeln"),
+            "Mot Kungssten": getDeparture("lindholmen", "kungssten"),
+            "Båt": getDeparture("lpiren", "stenpiren")
+        })
+
+    elif place == "kungssten":
+        return json.dumps({
+            "Mot Huset": getDeparture("kungssten", "kberget"),
+            "Mot Marklandsgatan": getDeparture("kungssten", "markland"),
+            "Mot Lindholmen": getDeparture("kungsstenvl", "lindholmen")
         })
 
     return json.dumps({
         "test":"test2"
     })
 
-def getDeparture(fr, to, countdown=False, special=False, first=False, dest=" "):
-    time_now = datetime.now(tz.gettz("Europe/Stockholm"))
+# fr: From
+# to: To
+# countdown: If time left (countdown) or the timetable time with offset should be displayed
+# first: Show combined row of all departures toward a stop (first 3)
+# dest: Destination showed for the combined row
+# offset: Time offset to not show unnecessary departures
+def getDeparture(fr, to, countdown=True, first=False, dest=" ", offset=0):
+    time_now = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
     date = time_now.strftime("%Y%m%d")
     time = time_now.strftime("%H:%M")
     return clean(rp.departureBoard(
         id=stopIDs[fr], date=date, timeSpan=60,
         time=time, maxDeparturesPerLine=3, 
-        direction=stopIDs[to], needJourneyDetail=0), countdown, special, first, dest)
+        direction=stopIDs[to], needJourneyDetail=0), countdown, first, dest)
 
-def clean(obj, countdown, special, first, dest):
+# obj: Object received from VT API
+# countdown, first, dest: same as getDeparture()
+def clean(obj, countdown, first, dest):
     deps = obj.get("DepartureBoard").get("Departure")
     if deps == None:
         return []
@@ -102,7 +132,7 @@ def clean(obj, countdown, special, first, dest):
         line = dep.get("sname")
         dest = cut(dep.get("direction"))
         ctdown = calculateCountdown(dep)
-        if countdown or (special and dep.get("type") == "TRAM"):
+        if countdown:
             time = ctdown
         else:
             time = dep.get("time")+getDelay(dep)
