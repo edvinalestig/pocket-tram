@@ -1,6 +1,7 @@
 # coding: utf-8
 import base64
 import requests
+from requests_futures.sessions import FuturesSession
 
 class Auth():
     def __init__(self, key, secret, scope):
@@ -45,6 +46,39 @@ class Auth():
             raise requests.exceptions.HTTPError(f'{response.status_code} {response_dict.get("error_description")}')
 
         return response
+
+    def check_responses(self, response_list):
+        fine = True
+        for resp in response_list:
+            # Check for any errors
+            if resp.status_code != 200:
+                fine = False
+
+        if fine:
+            return response_list
+        else:
+            print("Renewing token..")
+            self.__renew_token()
+            header = {"Authorization": self.token}
+
+            # Retry!
+            session = FuturesSession()
+            reqs = []
+            for resp in response_list:
+                # Send the new requests
+                url = resp.url
+                reqs.append(session.get(url, headers=header))
+                time.sleep(0.01)
+
+            # Get the results
+            resps = []
+            for req in reqs:
+                resps.append(req.result())
+
+            if resps[0].status_code != 200:
+                raise requests.exceptions.HTTPError(f'{resps[0].status_code} {resps[0].reason}')
+
+            return resps
 
 
 class Reseplaneraren():
@@ -160,6 +194,36 @@ class Reseplaneraren():
         response = self.auth.check_response(response)
 
         return response.json()
+
+
+    def asyncDepartureBoards(self, request_list):
+        header = {"Authorization": self.auth.token}
+        url = "https://api.vasttrafik.se/bin/rest.exe/v2/departureBoard"
+
+        # Start a session for the async requests
+        session = FuturesSession()
+        reqs = []
+        for req in request_list:
+            # Send the requests
+            req["format"] = "json"
+            future = session.get(url, headers=header, params=req)
+            reqs.append(future)
+            time.sleep(0.02) # Without this everything breaks
+
+        responses = []
+        for req in reqs:
+            # Get the results
+            r = req.result()
+            responses.append(r)
+
+        # Check for errors
+        resp = self.auth.check_responses(responses)
+
+        output = []
+        for response in resp:
+            output.append(response.json())
+
+        return output
 
 
     def arrivalBoard(self, **kwargs):
