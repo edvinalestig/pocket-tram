@@ -1,5 +1,6 @@
 # coding: utf-8
 import base64
+import time
 import requests
 from requests_futures.sessions import FuturesSession
 
@@ -16,38 +17,38 @@ class Auth():
         self.__credentials = base64.b64encode(str.encode(f'{key}:{secret}')).decode("utf-8")
         self.scope = scope
 
-        self.__renew_token()
+        self.__renewToken()
 
 
-    def __renew_token(self):
+    def __renewToken(self):
         header = {
             "Content-Type": "application/x-www-form-urlencoded",
             "Authorization": "Basic " + self.__credentials
         }
         url = f'https://api.vasttrafik.se/token?grant_type=client_credentials&scope={self.scope}'
         response = requests.post(url, headers=header)
-        response_dict = response.json()
+        responseDict = response.json()
 
         if response.status_code != 200:
-            raise requests.exceptions.HTTPError(f'{response.status_code} {response_dict.get("error_description")}')
+            raise requests.exceptions.HTTPError(f'{response.status_code} {responseDict.get("error_description")}')
 
-        self.token = "Bearer " + response_dict.get("access_token")
+        self.token = "Bearer " + responseDict.get("access_token")
 
 
-    def check_response(self, response):
+    def checkResponse(self, response):
         if response.status_code == 401:
-            self.__renew_token()
+            self.__renewToken()
 
             header = {"Authorization": self.token}
             response = requests.get(response.url, headers=header)
 
-        response_dict = response.json()
+        responseDict = response.json()
         if response.status_code != 200:
-            raise requests.exceptions.HTTPError(f'{response.status_code} {response_dict.get("error_description")}')
+            raise requests.exceptions.HTTPError(f'{response.status_code} {responseDict.get("error_description")}')
 
         return response
 
-    def check_responses(self, response_list):
+    def checkResponses(self, response_list):
         fine = True
         for resp in response_list:
             # Check for any errors
@@ -58,7 +59,7 @@ class Auth():
             return response_list
         else:
             print("Renewing token..")
-            self.__renew_token()
+            self.__renewToken()
             header = {"Authorization": self.token}
 
             # Retry!
@@ -94,7 +95,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -105,7 +106,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
  
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -116,7 +117,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -127,7 +128,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -138,7 +139,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -149,7 +150,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -160,7 +161,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -170,7 +171,7 @@ class Reseplaneraren():
         url = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail"
 
         response = requests.get(url, headers=header, params={"ref":ref})
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -180,7 +181,7 @@ class Reseplaneraren():
         url = "https://api.vasttrafik.se/bin/rest.exe/v2/geometry"
 
         response = requests.get(url, headers=header, params={"ref":ref})
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -191,7 +192,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -217,7 +218,7 @@ class Reseplaneraren():
             responses.append(r)
 
         # Check for errors
-        resp = self.auth.check_responses(responses)
+        resp = self.auth.checkResponses(responses)
 
         output = []
         for response in resp:
@@ -232,7 +233,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -240,7 +241,7 @@ class Reseplaneraren():
     def request(self, url):
         header = {"Authorization": self.auth.token}
         response = requests.get(url, headers=header)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -256,7 +257,7 @@ class TrafficSituations():
     def __get(self, url):
         header = {"Authorization": self.auth.token}
         response = requests.get(url, headers=header)
-        response = self.auth.check_response(response)
+        response = self.auth.checkResponse(response)
 
         return response.json()
 
@@ -292,16 +293,6 @@ class TrafficSituations():
 
 
 if __name__ == "__main__":
-    with open("credentials.csv", "r") as f:
-        key, secret = f.read().split(",")
-
-    auth = Auth(key, secret, 0)
-    ts = TrafficSituations(auth)
-    # vt = Reseplaneraren(auth)
-
-    s = ts.trafficsituations()[0]
-    print(s)
-    # stop1 = vt.location_name(input="Kungssten").get("LocationList").get("StopLocation")[0].get("id")
-    # print(ts.stoppoint(9022014001040002))
-    # stop2 = vt.location_name(input="Kampenhof").get("LocationList").get("StopLocation")[0].get("id")
-    # print(vt.trip(originId=stop1, destId=stop2, date=20190215, time="15:24"))
+    print("Import using 'import vasttrafik'")
+    print("or by importing selected classes only:")
+    print("'from vasttrafik import Auth, Reseplaneraren, TrafficSituations'")

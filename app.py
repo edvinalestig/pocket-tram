@@ -40,54 +40,98 @@ def req():
     place = request.args.get("place")
 
     if place == "lgh":
+        deps = getDepartures([
+            compileDict("lgh", "chalmers", countdown=False, first=True, dest="Chalmers"),
+            compileDict("svingeln", "lindholmen", first=True, dest="Lindholmen")
+        ])
+
         return json.dumps({
-            "Ullevi Norra": getDeparture("lgh", "chalmers", countdown=False, first=True, dest="Chalmers"),
-            "Svingeln": getDeparture("svingeln", "lindholmen", first=True, dest="Lindholmen")
+            "Ullevi Norra": deps[0],
+            "Svingeln": deps[1]
         })
 
     elif place == "huset":
+        deps = getDepartures([
+            compileDict("huset1", "kungssten", countdown=False),
+            compileDict("huset2", "kungssten", countdown=False),
+            compileDict("kungsstenvl", "lindholmen", countdown=False)
+        ])
+
         return json.dumps({
-            "Rengatan": getDeparture("huset1", "kungssten", countdown=False), 
-            "Nya Varvsallén": getDeparture("huset2", "kungssten", countdown=False),
-            "Kungssten": getDeparture("kungsstenvl", "lindholmen", countdown=False)
+            "Rengatan": deps[0], 
+            "Nya Varvsallén": deps[1],
+            "Kungssten": deps[2]
         })
     
     elif place == "markland":
+        deps = getDepartures([
+            compileDict("markland", "kungssten"),
+            compileDict("markland", "mariaplan"),
+            compileDict("mariaplan", "kungssten", offset=5)
+        ])
+
         return json.dumps({
-            "Till Kungssten": getDeparture("markland", "kungssten"),
-            "Till Mariaplan (restid 6 min)": getDeparture("markland", "mariaplan"),
-            "Från Mariaplan": getDeparture("mariaplan", "kungssten", offset=5)
+            "Till Kungssten": deps[0],
+            "Till Mariaplan (restid 6 min)": deps[1],
+            "Från Mariaplan": deps[2]
         })
 
     elif place == "jt":
+        deps = getDepartures([
+            compileDict("jt", "chalmers"),
+            compileDict("jt", "vasaplatsen"),
+            compileDict("jt", "kberget"),
+            compileDict("jt", "lgh")
+        ])
+
         return json.dumps({
-            "Mot Chalmers": getDeparture("jt", "chalmers"),
-            "Mot Vasaplatsen": getDeparture("jt", "vasaplatsen"),
-            "Mot Huset": getDeparture("jt", "kberget"),
-            "Mot Lägenheten": getDeparture("jt", "lgh")
+            "Mot Chalmers": deps[0],
+            "Mot Vasaplatsen": deps[1],
+            "Mot Huset": deps[2],
+            "Mot Lägenheten": deps[3]
         })
 
     elif place == "chalmers":
+        deps = getDepartures([
+            compileDict("chalmers", "lgh", first=True, dest="Ullevi Norra"),
+            compileDict("chalmers", "jt"),
+            compileDict("jt", "kberget", offset=9),
+            compileDict("chalmers", "markland", first=True, dest="Marklandsgatan"),
+            compileDict("markland", "kungssten", offset=9)
+        ])
+
         return json.dumps({
-            "Mot Ullevi Norra": getDeparture("chalmers", "lgh", first=True, dest="Ullevi Norra"),
-            "Mot Järntorget (restid 10 min)": getDeparture("chalmers", "jt"),
-            "Från Järntorget": getDeparture("jt", "kberget", offset=9),
-            "Mot Marklandsgatan (restid 10 min)": getDeparture("chalmers", "markland", first=True, dest="Marklandsgatan"),
-            "Från Marklandsgatan": getDeparture("markland", "kungssten", offset=9)
+            "Mot Ullevi Norra": deps[0],
+            "Mot Järntorget (restid 10 min)": deps[1],
+            "Från Järntorget": deps[2],
+            "Mot Marklandsgatan (restid 10 min)": deps[3],
+            "Från Marklandsgatan": deps[4]
         })
 
     elif place == "lindholmen":
+        deps = getDepartures([
+            compileDict("lindholmen", "svingeln", first=True, dest="Svingeln"),
+            compileDict("lindholmen", "kungssten"),
+            compileDict("lpiren", "stenpiren")
+        ])
+
         return json.dumps({
-            "Mot Svingeln": getDeparture("lindholmen", "svingeln", first=True, dest="Svingeln"),
-            "Mot Kungssten": getDeparture("lindholmen", "kungssten"),
-            "Båt": getDeparture("lpiren", "stenpiren")
+            "Mot Svingeln": deps[0],
+            "Mot Kungssten": deps[1],
+            "Båt": deps[2]
         })
 
     elif place == "kungssten":
+        deps = getDepartures([
+            compileDict("kungssten", "kberget"),
+            compileDict("kungssten", "markland"),
+            compileDict("kungsstenvl", "lindholmen")
+        ])
+
         return json.dumps({
-            "Mot Huset": getDeparture("kungssten", "kberget"),
-            "Mot Marklandsgatan": getDeparture("kungssten", "markland"),
-            "Mot Lindholmen": getDeparture("kungsstenvl", "lindholmen")
+            "Mot Huset": deps[0],
+            "Mot Marklandsgatan": deps[1],
+            "Mot Lindholmen": deps[2]
         })
 
     return json.dumps({
@@ -101,13 +145,41 @@ def req():
 # dest: Destination showed for the combined row
 # offset: Time offset to not show unnecessary departures
 def getDeparture(fr, to, countdown=True, first=False, dest=" ", offset=0):
-    time_now = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
-    date = time_now.strftime("%Y%m%d")
-    time = time_now.strftime("%H:%M")
+    timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
+    date = timeNow.strftime("%Y%m%d")
+    time = timeNow.strftime("%H:%M")
     return clean(rp.departureBoard(
         id=stopIDs[fr], date=date, timeSpan=60,
         time=time, maxDeparturesPerLine=3, 
         direction=stopIDs[to], needJourneyDetail=0), countdown, first, dest)
+
+# Compiles a dict with all info for getDeparture() so it can be sent asynchronously
+def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0):
+    timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
+    return {
+        "request": {
+            "id": stopIDs[fr],
+            "date": timeNow.strftime("%Y%m%d"),
+            "timeSpan": 60,
+            "time": timeNow.strftime("%H:%M"),
+            "maxDeparturesPerLine": 3,
+            "direction": stopIDs[to],
+            "needJourneyDetail": 0
+        },
+        "countdown": countdown,
+        "first": first,
+        "dest": dest
+    }
+
+# Takes a list of compiled dicts and returns a list of cleaned results
+# Does what getDeparture() does but with many at the same time
+def getDepartures(reqList):
+    reqs = [req["request"] for req in reqList]
+    responses = rp.asyncDepartureBoards(reqs)
+    returnList = []
+    for i, resp in enumerate(responses):
+        returnList.append(clean(resp, reqList[i]["countdown"], reqList[i]["first"], reqList[i]["dest"]))
+    return returnList
 
 # obj: Object received from VT API
 # countdown, first, dest: same as getDeparture()
@@ -135,7 +207,7 @@ def clean(obj, countdown, first, dest):
         if countdown:
             time = ctdown
         else:
-            time = dep.get("time")+getDelay(dep)
+            time = dep.get("time") + getDelay(dep)
         i = 0
         while i < len(outArr):
             if outArr[i].get("line") == line and outArr[i].get("dest") == dest:
@@ -157,11 +229,11 @@ def clean(obj, countdown, first, dest):
 
     if first:
         #Get only the first three
-        sort = sort_departures([firstDeps])[0]
+        sort = sortDepartures([firstDeps])[0]
         sort["time"] = sort["time"][:3]
         outArr.append(sort)
 
-    return sort_departures(outArr)
+    return sortDepartures(outArr)
 
 def cut(s):
     return s.split(" via ")[0]
@@ -199,24 +271,24 @@ def calculateCountdown(departure):
         return "X"
 
     # Check if real time info is available
-    d_time = departure.get("rtTime")
-    if d_time == None:
+    dTime = departure.get("rtTime")
+    if dTime == None:
         realtime = False
-        d_time = departure.get("time")
+        dTime = departure.get("time")
     else:
         realtime = True
 
     # Convert it all to minutes
-    hour, minutes = d_time.split(":")
+    hour, minutes = dTime.split(":")
     minutes = int(minutes)
     minutes += int(hour) * 60
 
     # Now:
-    time_now = datetime.now(tz.gettz("Europe/Stockholm"))
-    minutes_now = int(time_now.strftime("%M")) + int(time_now.strftime("%H")) * 60
+    timeNow = datetime.now(tz.gettz("Europe/Stockholm"))
+    minutesNow = int(timeNow.strftime("%M")) + int(timeNow.strftime("%H")) * 60
 
     # Time left:
-    countdown = minutes - minutes_now
+    countdown = minutes - minutesNow
 
     if countdown < -1300:
         # Past midnight, 24 hours = 1440 min
@@ -238,7 +310,7 @@ def timeToMinutes(t):
     minutes += int(hour) * 60
     return minutes
 
-def sort_departures(arr):
+def sortDepartures(arr):
     # Get the departures in the correct order in case the one behind is actually in front
     for i, dep in enumerate(arr):
         try:
@@ -247,9 +319,9 @@ def sort_departures(arr):
             # One departure was a string and it doesn't like mixing strings and numbers
             pass
     # Sort firstly by line number and secondly by destination
-    sorted_by_destination = sorted(arr, key=lambda dep: dep["dest"])
-    sorted_by_line = sorted(sorted_by_destination, key=lambda dep: tryConvert(dep["line"]))
-    return sorted_by_line
+    sortedByDestination = sorted(arr, key=lambda dep: dep["dest"])
+    sortedByLine = sorted(sortedByDestination, key=lambda dep: tryConvert(dep["line"]))
+    return sortedByLine
 
 def tryConvert(value):
     try:
