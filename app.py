@@ -3,6 +3,7 @@ from vasttrafik import Auth, Reseplaneraren, TrafficSituations
 import json
 import dateutil.tz as tz
 from datetime import datetime, timedelta
+import math
 
 app = Flask(__name__)
 
@@ -247,19 +248,13 @@ def getDelay(dep):
     rttime = dep.get("rtTime")
     if rttime == None:
         return ""
+    ttdate = dep.get("date")
+    rtdate = dep.get("rtDate")
 
-    # Convert it all to minutes
-    rtminutes = timeToMinutes(rttime)
-    ttminutes = timeToMinutes(tttime)
-
-    # Time difference:
-    delay = rtminutes - ttminutes
-
-    if delay < -1300:
-        # Past midnight, 24 hours = 1440 min
-        delay += 1440
-    elif delay > 1300:
-        delay -= 1440
+    ttdt = convertToDatetime(tttime, ttdate)
+    rtdt = convertToDatetime(rttime, rtdate)
+    delta = rtdt - ttdt
+    delay = delta.days * 1440 + math.floor(delta.seconds/60)
 
     if delay >= 0:
         return f"+{delay}"
@@ -272,29 +267,22 @@ def calculateCountdown(departure):
 
     # Check if real time info is available
     dTime = departure.get("rtTime")
+    dDate = departure.get("rtDate")
     if dTime == None:
         realtime = False
         dTime = departure.get("time")
+        dDate = departure.get("date")
     else:
         realtime = True
 
-    # Convert it all to minutes
-    hour, minutes = dTime.split(":")
-    minutes = int(minutes)
-    minutes += int(hour) * 60
 
-    # Now:
+    depTime = convertToDatetime(dTime, dDate)
     timeNow = datetime.now(tz.gettz("Europe/Stockholm"))
-    minutesNow = int(timeNow.strftime("%M")) + int(timeNow.strftime("%H")) * 60
 
     # Time left:
-    countdown = minutes - minutesNow
+    countdown = depTime - timeNow.replace(tzinfo=None)
+    countdown = countdown.days * 1440 + math.floor(countdown.seconds/60)
 
-    if countdown < -1300:
-        # Past midnight, 24 hours = 1440 min
-        countdown += 1440
-    elif countdown > 1300:
-        countdown -= 1440
 
     if realtime:
         if countdown <= 0:
@@ -304,15 +292,23 @@ def calculateCountdown(departure):
     else:
         return f'Ca {countdown}'
 
-def timeToMinutes(t):
-    hour, minutes = t.split(":")
-    minutes = int(minutes)
-    minutes += int(hour) * 60
-    return minutes
+def convertToDatetime(time, date):
+    t = time.split(":")
+    d = date.split("-")
+    return datetime(hour=int(t[0]), minute=int(t[1]), year=int(d[0]), month=int(d[1]), day=int(d[2]))
 
 def sortDepartures(arr):
     # Get the departures in the correct order in case the one behind is actually in front
     for i, dep in enumerate(arr):
+        # Do not sort the list if there are strings in it, they might 
+        # be "00:12+1" and "23:56-2" which would then be swapped.
+        skip = False
+        for t in arr[i]["time"]:
+            if type(t) == str:
+                skip = True
+        if skip: 
+            continue
+
         try:
             arr[i]["time"].sort()
         except TypeError:
