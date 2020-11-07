@@ -157,6 +157,7 @@ def getDeparture(fr, to, countdown=True, first=False, dest=" ", offset=0):
 # Compiles a dict with all info for getDeparture() so it can be sent asynchronously
 def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0):
     timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
+    # timeNow = datetime(year=2020, month=11, day=12, hour=16, minute=0) + timedelta(minutes=offset)
     return {
         "request": {
             "id": stopIDs[fr],
@@ -186,10 +187,14 @@ def getDepartures(reqList):
 # countdown, first, dest: same as getDeparture()
 def clean(obj, countdown, first, dest):
     deps = obj.get("DepartureBoard").get("Departure")
+
     if deps == None:
+        # No departures found
         return []
     
     if type(deps) != list:
+        # Only one departure, put it in a list so
+        # the rest of the code doesn't break
         deps = [deps]
 
     firstDeps = {
@@ -205,17 +210,23 @@ def clean(obj, countdown, first, dest):
         line = dep.get("sname")
         dest = cut(dep.get("direction"))
         ctdown = calculateCountdown(dep)
+
+        # If the time left or the time+delay should be shown
         if countdown:
             time = ctdown
         else:
             time = dep.get("time") + getDelay(dep)
+
         i = 0
         while i < len(outArr):
+            # Check if that line & destination is already present.
+            # Put all departures in one list
             if outArr[i].get("line") == line and outArr[i].get("dest") == dest:
                 outArr[i]["time"].append(time)
                 break
             i += 1
         else:
+            # The line & destination is not in the list
             vitals = {
                 "line": line,
                 "dest": dest,
@@ -226,18 +237,25 @@ def clean(obj, countdown, first, dest):
             outArr.append(vitals)
         
         if (type(ctdown) == int) or ("Ca" not in ctdown):
+            # Add countdowns to a list of all departures toward a stop if 
+            # they aren't cancelled or not having realtime info.
             firstDeps["time"].append(ctdown)
 
     if first:
-        #Get only the first three
-        sort = sortDepartures([firstDeps])[0]
-        sort["time"] = sort["time"][:3]
-        outArr.append(sort)
+        # All departures toward a stop
+        # Get only the first three after sorting
+        if len(firstDeps["time"]) > 0:
+            sort = sortDepartures([firstDeps])[0]
+            sort["time"] = sort["time"][:3]
+            outArr.append(sort)
 
     return sortDepartures(outArr)
 
+# Filter unwanted stuff from destination strings
 def cut(s):
-    return s.split(" via ")[0]
+    s = s.split(" via ")[0]
+    s = s.split(", Fri resa")[0]
+    return s
 
 def getDelay(dep):
     if dep.get("cancelled"):
@@ -254,6 +272,8 @@ def getDelay(dep):
     ttdt = convertToDatetime(tttime, ttdate)
     rtdt = convertToDatetime(rttime, rtdate)
     delta = rtdt - ttdt
+
+    # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
     delay = delta.days * 1440 + math.floor(delta.seconds/60)
 
     if delay >= 0:
@@ -275,12 +295,12 @@ def calculateCountdown(departure):
     else:
         realtime = True
 
-
     depTime = convertToDatetime(dTime, dDate)
     timeNow = datetime.now(tz.gettz("Europe/Stockholm"))
 
     # Time left:
     countdown = depTime - timeNow.replace(tzinfo=None)
+    # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
     countdown = countdown.days * 1440 + math.floor(countdown.seconds/60)
 
 
@@ -314,17 +334,15 @@ def sortDepartures(arr):
         except TypeError:
             # One departure was a string and it doesn't like mixing strings and numbers
             pass
+
     # Sort firstly by line number and secondly by destination
     sortedByDestination = sorted(arr, key=lambda dep: dep["dest"])
-    sortedByLine = sorted(sortedByDestination, key=lambda dep: tryConvert(dep["line"]))
+    sortedByLine = sorted(sortedByDestination, key=lambda dep: prioritise(dep["line"]))
     return sortedByLine
 
-def tryConvert(value):
-    try:
-        return int(value)
-    except ValueError:
-        if value == "🚋":
-            return 0
-        else:
-            new = [str(ord(i)) for i in value]
-            return int("".join(new))
+def prioritise(value):
+    if value == "🚋":
+        return "0"
+
+    # 65 should become before 184 -> sort by 065 and 184 instead.
+    return (3 - len(value)) * "0" + value
