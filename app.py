@@ -301,7 +301,7 @@ def calculateCountdown(departure):
     # Time left:
     countdown = depTime - timeNow.replace(tzinfo=None)
     # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
-    countdown = countdown.days * 1440 + math.floor(countdown.seconds/60)
+    countdown = countdown.days * 1440 + math.ceil(countdown.seconds/60)
 
 
     if realtime:
