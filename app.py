@@ -29,29 +29,38 @@ stopIDs = {
     "lpiren": 9021014004493000,
     "svingeln": 9021014006480000,
     "stenpiren": 9021014006242000,
-    "kungsstenvl": 9021014004101000
+    "kungsstenvl": 9021014004101000,
+    "brunnsparken": 9021014001760000,
+    "centralstn": 9021014001950000,
+    "kapellplatsen": 9021014003760000
 }
 
 @app.route("/")
 def index():
     return send_file("static/index.html")
 
+# "Hidden" page: displays response from VT when searching for a stop
+# Usage: <url>/searchstop?stop=<name>
+@app.route("/searchstop")
+def seachStop():
+    return json.dumps(rp.location_name(input=request.args.get("stop")))
+
 @app.route("/request")
 def req():
     place = request.args.get("place")
 
-    trafficSit = ts.trafficsituations()
-
     if place == "lgh":
         deps = getDepartures([
             compileDict("lgh", "chalmers", countdown=False, first=True, dest="Chalmers"),
-            compileDict("svingeln", "lindholmen", first=True, dest="Lindholmen")
+            compileDict("svingeln", "lindholmen", first=True, dest="Lindholmen"),
+            compileDict("lgh", "centralstn")
         ])
 
         return json.dumps({
             "stops": {
-                "Ullevi Norra": deps[0],
-                "Svingeln": deps[1]
+                "Mot Chalmers": deps[0],
+                "Mot Lindholmen": deps[1],
+                "Mot Centralstationen": deps[2]
             },
             "ts": getTrafficSituation(place)
         })
@@ -81,8 +90,8 @@ def req():
 
         return json.dumps({
             "stops": {
-                "Till Kungssten": deps[0],
-                "Till Mariaplan (restid 6 min)": deps[1],
+                "Mot Kungssten": deps[0],
+                "Mot Mariaplan (restid 6 min)": deps[1],
                 "Från Mariaplan": deps[2]
             },
             "ts": getTrafficSituation(place)
@@ -157,6 +166,22 @@ def req():
             },
             "ts": getTrafficSituation(place)
         })
+        
+    elif place == "centrum":
+        deps = getDepartures([
+            compileDict("brunnsparken", "kapellplatsen"),
+            compileDict("brunnsparken", "lgh"),
+            compileDict("centralstn", "svingeln")
+        ])
+
+        return json.dumps({
+            "stops": {
+                "Brunnsparken → Chalmers": deps[0],
+                "Brunnsparken → Ullevi Norra": deps[1],
+                "Centralen → Svingeln": deps[2]
+            },
+            "ts": getTrafficSituation("centrum")
+        })
 
     return json.dumps({
         "test":"test2"
@@ -179,8 +204,8 @@ def getDeparture(fr, to, countdown=True, first=False, dest=" ", offset=0):
 
 # Compiles a dict with all info for getDeparture() so it can be sent asynchronously
 def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0):
-    # timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
-    timeNow = datetime(year=2020, month=12, day=16, hour=7, minute=0) + timedelta(minutes=offset)
+    timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
+    # timeNow = datetime(year=2020, month=12, day=16, hour=7, minute=0) + timedelta(minutes=offset)
     return {
         "request": {
             "id": stopIDs[fr],
@@ -259,7 +284,7 @@ def clean(obj, countdown, first, dest):
             }
             outArr.append(vitals)
         
-        if (type(ctdown) == int): # or ("Ca" not in ctdown):
+        if (type(ctdown) == int) or (ctdown == "Nu"):
             # Add countdowns to a list of all departures toward a stop if 
             # they aren't cancelled or not having realtime info.
             firstDeps["time"].append(ctdown)
@@ -353,7 +378,7 @@ def sortDepartures(arr):
             continue
 
         try:
-            arr[i]["time"].sort()
+            arr[i]["time"] = sorted(arr[i]["time"], key=lambda t: prioTimes(t))
         except TypeError:
             # One departure was a string and it doesn't like mixing strings and numbers
             pass
@@ -370,6 +395,15 @@ def prioritise(value):
     # 65 should become before 184 -> sort by 065 and 184 instead.
     return (3 - len(value)) * "0" + value
 
+def prioTimes(t):
+    if type(t) == int:
+        return t
+    if t == "Nu":
+        return 0
+    if "Ca " in t:
+        return int(t.split("Ca ")[1])
+    return 99999999
+
 
 def getTrafficSituation(place):
     placeStops = {
@@ -379,7 +413,8 @@ def getTrafficSituation(place):
         "lindholmen": ["Lindholmen", "Lindholmspiren", "Svingeln", "Stenpiren"],
         "markland": ["Marklandsgatan", "Kungssten", "Mariaplan", "Chalmers"],
         "kungssten": ["Kungssten", "Kungssten Västerleden", "Lindholmen", "Järntorget", "Marklandsgatan"],
-        "jt": ["Järntorget", "Kungssten", "Rengatan", "Nya Varvsallén", "Chalmers", "Ullevi Norra"]
+        "jt": ["Järntorget", "Kungssten", "Rengatan", "Nya Varvsallén", "Chalmers", "Ullevi Norra"],
+        "centrum": ["Brunnsparken", "Centralstationen"]
     }
 
     names = placeStops.get(place)

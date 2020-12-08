@@ -10,7 +10,8 @@ const places = {
     "jt": "Järntorget",
     "huset": "Huset",
     "lindholmen": "Lindholmen",
-    "kungssten": "Kungssten"
+    "kungssten": "Kungssten",
+    "centrum": "Centrum"
 }
 
 function reset() {
