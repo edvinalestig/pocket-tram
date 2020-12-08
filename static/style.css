@@ -11,13 +11,21 @@ body {
     display: none;
 }
 
-.grouptitle {
+.grouptitle, .disrTitle {
     text-align: center;
     margin: 7px;
 }
 
 .line, .time {
     text-align: center;
+}
+
+.disrDescription {
+    text-align: center;
+    margin-top: 0px;
+    padding-top: 0px;
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 .direction, .time {

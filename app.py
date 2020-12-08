@@ -40,6 +40,8 @@ def index():
 def req():
     place = request.args.get("place")
 
+    trafficSit = ts.trafficsituations()
+
     if place == "lgh":
         deps = getDepartures([
             compileDict("lgh", "chalmers", countdown=False, first=True, dest="Chalmers"),
@@ -47,8 +49,11 @@ def req():
         ])
 
         return json.dumps({
-            "Ullevi Norra": deps[0],
-            "Svingeln": deps[1]
+            "stops": {
+                "Ullevi Norra": deps[0],
+                "Svingeln": deps[1]
+            },
+            "ts": getTrafficSituation(place)
         })
 
     elif place == "huset":
@@ -59,9 +64,12 @@ def req():
         ])
 
         return json.dumps({
-            "Rengatan": deps[0], 
-            "Nya Varvsallén": deps[1],
-            "Kungssten": deps[2]
+            "stops": {
+                "Rengatan": deps[0], 
+                "Nya Varvsallén": deps[1],
+                "Kungssten": deps[2]
+            },
+            "ts": getTrafficSituation(place)
         })
     
     elif place == "markland":
@@ -72,9 +80,12 @@ def req():
         ])
 
         return json.dumps({
-            "Till Kungssten": deps[0],
-            "Till Mariaplan (restid 6 min)": deps[1],
-            "Från Mariaplan": deps[2]
+            "stops": {
+                "Till Kungssten": deps[0],
+                "Till Mariaplan (restid 6 min)": deps[1],
+                "Från Mariaplan": deps[2]
+            },
+            "ts": getTrafficSituation(place)
         })
 
     elif place == "jt":
@@ -86,10 +97,13 @@ def req():
         ])
 
         return json.dumps({
-            "Mot Chalmers": deps[0],
-            "Mot Vasaplatsen": deps[1],
-            "Mot Huset": deps[2],
-            "Mot Lägenheten": deps[3]
+            "stops": {
+                "Mot Chalmers": deps[0],
+                "Mot Vasaplatsen": deps[1],
+                "Mot Huset": deps[2],
+                "Mot Lägenheten": deps[3]
+            },
+            "ts": getTrafficSituation(place)
         })
 
     elif place == "chalmers":
@@ -102,11 +116,14 @@ def req():
         ])
 
         return json.dumps({
-            "Mot Ullevi Norra": deps[0],
-            "Mot Järntorget (restid 10 min)": deps[1],
-            "Från Järntorget": deps[2],
-            "Mot Marklandsgatan (restid 10 min)": deps[3],
-            "Från Marklandsgatan": deps[4]
+            "stops": {
+                "Mot Ullevi Norra": deps[0],
+                "Mot Järntorget (restid 10 min)": deps[1],
+                "Från Järntorget": deps[2],
+                "Mot Marklandsgatan (restid 10 min)": deps[3],
+                "Från Marklandsgatan": deps[4]
+            },
+            "ts": getTrafficSituation(place)
         })
 
     elif place == "lindholmen":
@@ -117,9 +134,12 @@ def req():
         ])
 
         return json.dumps({
-            "Mot Svingeln": deps[0],
-            "Mot Kungssten": deps[1],
-            "Båt": deps[2]
+            "stops": {
+                "Mot Svingeln": deps[0],
+                "Mot Kungssten": deps[1],
+                "Båt": deps[2]
+            },
+            "ts": getTrafficSituation(place)
         })
 
     elif place == "kungssten":
@@ -130,9 +150,12 @@ def req():
         ])
 
         return json.dumps({
-            "Mot Huset": deps[0],
-            "Mot Marklandsgatan": deps[1],
-            "Mot Lindholmen": deps[2]
+            "stops": {
+                "Mot Huset": deps[0],
+                "Mot Marklandsgatan": deps[1],
+                "Mot Lindholmen": deps[2]
+            },
+            "ts": getTrafficSituation(place)
         })
 
     return json.dumps({
@@ -156,8 +179,8 @@ def getDeparture(fr, to, countdown=True, first=False, dest=" ", offset=0):
 
 # Compiles a dict with all info for getDeparture() so it can be sent asynchronously
 def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0):
-    timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
-    # timeNow = datetime(year=2020, month=11, day=12, hour=16, minute=0) + timedelta(minutes=offset)
+    # timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
+    timeNow = datetime(year=2020, month=12, day=16, hour=7, minute=0) + timedelta(minutes=offset)
     return {
         "request": {
             "id": stopIDs[fr],
@@ -236,7 +259,7 @@ def clean(obj, countdown, first, dest):
             }
             outArr.append(vitals)
         
-        if (type(ctdown) == int) or ("Ca" not in ctdown):
+        if (type(ctdown) == int): # or ("Ca" not in ctdown):
             # Add countdowns to a list of all departures toward a stop if 
             # they aren't cancelled or not having realtime info.
             firstDeps["time"].append(ctdown)
@@ -346,3 +369,46 @@ def prioritise(value):
 
     # 65 should become before 184 -> sort by 065 and 184 instead.
     return (3 - len(value)) * "0" + value
+
+
+def getTrafficSituation(place):
+    placeStops = {
+        "lgh": ["Ullevi Norra", "Svingeln", "Chalmers"],
+        "chalmers": ["Chalmers", "Ullevi Norra", "Järntorget", "Marklandsgatan"],
+        "huset": ["Rengatan", "Nya Varvsallén", "Nya Varvsallen", "Järntorget"],
+        "lindholmen": ["Lindholmen", "Lindholmspiren", "Svingeln", "Stenpiren"],
+        "markland": ["Marklandsgatan", "Kungssten", "Mariaplan", "Chalmers"],
+        "kungssten": ["Kungssten", "Kungssten Västerleden", "Lindholmen", "Järntorget", "Marklandsgatan"],
+        "jt": ["Järntorget", "Kungssten", "Rengatan", "Nya Varvsallén", "Chalmers", "Ullevi Norra"]
+    }
+
+    names = placeStops.get(place)
+
+    arr = []
+    traffic = ts.trafficsituations()
+    for situation in traffic:
+        for stop in situation.get("affectedStopPoints"):
+            name = stop.get("name")
+            # Get only disruptions concerning the nearby stops
+            if name in names:
+                arr.append(situation)
+                break
+
+    outarr = []
+    for situation in arr:
+        # Get the start time and current time
+        timeformat = "%Y-%m-%dT%H%M%S%z" # Format from västtrafik
+        time = situation.get("startTime").replace(":", "")
+        time = datetime.strptime(time, timeformat)
+        now = datetime.now(tz.UTC)
+        # Add it to the output array only if the disruption has started
+        if time <= now:
+            relevant = {
+                "title": situation.get("title"), 
+                "description": situation.get("description")
+            }
+            # Skip duplicates
+            if relevant not in outarr:
+                outarr.append(relevant)
+
+    return outarr
