@@ -5,6 +5,8 @@ import dateutil.tz as tz
 from datetime import datetime, timedelta
 import math
 
+from utilityPages import UtilityPages
+
 app = Flask(__name__)
 
 with open("credentials.txt", "r") as f:
@@ -13,6 +15,7 @@ with open("credentials.txt", "r") as f:
 auth = Auth(creds[0].strip(), creds[1].strip(), "app")
 rp = Reseplaneraren(auth)
 ts = TrafficSituations(auth)
+utilPages = UtilityPages(rp)
 
 stopIDs = {
     "chalmers": 9021014001960000,
@@ -44,6 +47,18 @@ def index():
 @app.route("/searchstop")
 def seachStop():
     return json.dumps(rp.location_name(input=request.args.get("stop")))
+
+@app.route("/utilities")
+def utilities():
+    return utilPages.mainPage()
+
+@app.route("/findDepartures")
+def findDepartures():
+    return utilPages.searchStop(request.args)
+
+@app.route("/depInfo")
+def depInfo():
+    return utilPages.depInfo(request.args)
 
 @app.route("/request")
 def req():
