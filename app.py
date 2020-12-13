@@ -60,6 +60,10 @@ def findDepartures():
 def depInfo():
     return utilPages.depInfo(request.args)
 
+@app.route("/getgeometry")
+def getgeometry():
+    return utilPages.getGeometry(request.args)
+
 @app.route("/request")
 def req():
     place = request.args.get("place")

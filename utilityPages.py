@@ -35,24 +35,54 @@ class UtilityPages:
         html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body>'
         html += f"<h1>{stopName}, {depTime}, {depDate}</h1>"
         html += "\n<table>"
-        html += "\n<tr><th>Linje</th><th>Destination</th><th>TT-tid</th><th>RT-tid</th><th>Låggolv</th><th>Läge</th><th>Typ</th><th>Mer info</th></tr>"
+        html += "\n<tr><th>Linje</th><th>Destination</th><th>TT-tid</th><th>RT-tid</th><th>Låggolv</th><th>Läge</th><th>Typ</th><th>Inställd</th><th>Bokas?</th><th>Mer info</th></tr>"
         depRows = [(
             f"\n<tr>"
             f"<td style='background-color: {dep.get('fgColor')}; color: {dep.get('bgColor')}; text-align: center;'>{dep.get('sname')}</td>"
             f"<td>{dep.get('direction')}</td>"
             f"<td style='text-align: center;'>{dep.get('time')}</td>"
-            f"<td style='text-align: center;'>{dep.get('rtTime')}</td>"
+            f"<td style='text-align: center;'>{dep.get('rtTime') if dep.get('rtTime') else '-'}</td>"
             f"<td style='text-align: center;'>{'♿' if dep.get('accessibility') == 'wheelChair' else '❌'}</td>"
             f"<td style='text-align: center;'>{dep.get('track')}</td>"
             f"<td style='text-align: center;'>{dep.get('type')}</td>"
+            f"<td style='text-align: center;'>{'Ja' if dep.get('cancelled') else 'Nej'}</td>"
+            f'<td style="text-align: center;">{"Ja" if dep.get("booking") else "Nej"}</td>'
             f"<td style='text-align: center;'><a href='/depInfo?ref={dep.get('JourneyDetailRef').get('ref').split('?ref=')[1]}'>Mer info</a></td>"
             f"</tr>"
             ) for dep in departures]
         
         html += "".join(depRows)
-        html += "\n</table>\n</body>\n</html>"
-        
+        html += "\n</table>"
+        html += f"<br><a href='/findDepartures?stop={stopName}&time={departures[-1].get('time')}&date={departures[-1].get('date')}'>Fler avgångar</a>"
+        html += "\n</body>\n</html>"
+
         return html
+
+    def getStyle(self, dep, stop):
+        col = dep.get("Color")
+        if type(col) == dict:
+            color = col.get("bgColor")
+            bg = col.get("fgColor")
+        else:
+            idx = int(stop.get("routeIdx"))
+            color = "red"
+            bg = "hotpink"
+
+        return f'color: {color}; background-color: {bg};'
+
+    def getLine(self, dep, stop):
+        line = dep.get("JourneyName")
+        if type(line) == dict:
+            return line.get("name")
+        else:
+            return "Linje"
+
+    def getDestination(self, dep, stop):
+        dest = dep.get("Direction")
+        if type(dest) == dict:
+            return dest.get("$")
+        else:
+            return "Destination"
     
     def depInfo(self, args):
         ref = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail?ref=" + args.get("ref")
@@ -63,10 +93,36 @@ class UtilityPages:
         with open("dep.json", "w") as f:
             f.write(json.dumps(dep))
 
+        html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body>'
+        html += "<table>\n"
+        # header
+        stops = [(
+            f'<tr>'
+            f'<td rowspan="2" style="{self.getStyle(dep, stop)}">{self.getLine(dep, stop)}</td>'
+            f'<td rowspan="2" style="{self.getStyle(dep, stop)}">{self.getDestination(dep, stop)}</td>'
+            f'<td>{stop.get("name").split(", ")[0]}</td>'
+            f'<td>Ank. {stop.get("arrTime") if stop.get("arrTime") else "-"}</td>'
+            f'<td>Avg. {stop.get("depTime") if stop.get("depTime") else "-"}</td>'
+            f'</tr>'
+            f'<tr>'
+            f'<td>{stop.get("name").split(", ")[1]}</td>'
+            f'<td>RT ank. {stop.get("rtArrTime") if stop.get("rtArrTime") else "-"}</td>'
+            f'<td>RT avg. {stop.get("rtDepTime") if stop.get("rtDepTime") else "-"}</td>'
+            f'<td>Läge {stop.get("track")}</td>'
+            f'</tr>'
+        ) for stop in dep.get("Stop")]
+        
+        html += "\n".join(stops)
+        html += "\n</table>"
+        html += f'\n<a href="/getgeometry?ref={dep.get("GeometryRef").get("ref").split("?ref=")[1]}">Geometry</a>'
+        html += "\n</body>\n</html>"
+        
+        return html
 
-        
-        
-        return json.dumps(dep)
+    def getGeometry(self, args):
+        ref = args.get("ref")
+        geo = self.resep.geometry(ref).get("Geometry").get("Points").get("Point")
+        return json.dumps(geo)
 
 if __name__ == "__main__":
     pass
