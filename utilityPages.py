@@ -104,7 +104,10 @@ class UtilityPages:
             return "Destination"
     
     def depInfo(self, args):
-        ref = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail?ref=" + args.get("ref")
+        refArg = args.get("ref")
+        if not refArg:
+            return "<a href='/utilities'>Ingen referens</a>"
+        ref = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail?ref=" + refArg
         dep = self.resep.request(ref).get("JourneyDetail")
         if not dep:
             return "<a href='/utilities'>Ingen info<a>"
