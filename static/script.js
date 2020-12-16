@@ -11,7 +11,8 @@ const places = {
     "huset": "Huset",
     "lindholmen": "Lindholmen",
     "kungssten": "Kungssten",
-    "centrum": "Centrum"
+    "centrum": "Centrum",
+    "vasaplatsen": "Vasaplatsen"
 }
 
 function reset() {

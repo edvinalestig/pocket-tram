@@ -202,6 +202,24 @@ def req():
             "ts": getTrafficSituation("centrum")
         })
 
+    elif place == "vasaplatsen":
+        deps = getDepartures([
+            compileDict("vasaplatsen", "jt"),
+            compileDict("jt", "kberget", offset=5),
+            compileDict("vasaplatsen", "kapellplatsen", first=True, dest="Chalmers"),
+            compileDict("vasaplatsen", "lgh")
+        ])
+
+        return json.dumps({
+            "stops": {
+                "Mot Järntorget (restid 6 min)": deps[0],
+                "Från Järntorget": deps[1],
+                "Mot Chalmers": deps[2],
+                "Mot Ullevi Norra": deps[3]
+            },
+            "ts": getTrafficSituation("vasaplatsen")
+        })
+
     return json.dumps({
         "test":"test2"
     })
@@ -425,6 +443,7 @@ def prioTimes(t):
 
 
 def getTrafficSituation(place):
+    # Stops to check for each place
     placeStops = {
         "lgh": ["Ullevi Norra", "Svingeln", "Chalmers"],
         "chalmers": ["Chalmers", "Ullevi Norra", "Järntorget", "Marklandsgatan"],
@@ -433,7 +452,8 @@ def getTrafficSituation(place):
         "markland": ["Marklandsgatan", "Kungssten", "Mariaplan", "Chalmers"],
         "kungssten": ["Kungssten", "Kungssten Västerleden", "Lindholmen", "Järntorget", "Marklandsgatan"],
         "jt": ["Järntorget", "Kungssten", "Rengatan", "Nya Varvsallén", "Chalmers", "Ullevi Norra"],
-        "centrum": ["Brunnsparken", "Centralstationen"]
+        "centrum": ["Brunnsparken", "Centralstationen"],
+        "vasaplatsen": ["Vasaplatsen", "Chalmers", "Järntorget"]
     }
 
     names = placeStops.get(place)
