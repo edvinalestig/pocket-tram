@@ -405,11 +405,11 @@ def convertToDatetime(time, date):
 def sortDepartures(arr):
     # Get the departures in the correct order in case the one behind is actually in front
     for i, dep in enumerate(arr):
-        # Do not sort the list if there are strings in it, they might 
-        # be "00:12+1" and "23:56-2" which would then be swapped.
+        # Do not sort the list if there are strings in it (except 'Nu'), they  
+        # might be "00:12+1" and "23:56-2" which would then be swapped.
         skip = False
         for t in arr[i]["time"]:
-            if type(t) == str:
+            if type(t) == str and t != "Nu":
                 skip = True
         if skip: 
             continue
