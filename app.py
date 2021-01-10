@@ -71,7 +71,7 @@ def req():
     if place == "lgh":
         deps = getDepartures([
             compileDict("lgh", "chalmers", countdown=False, first=True, dest="Chalmers"),
-            compileDict("svingeln", "lindholmen", first=True, dest="Lindholmen"),
+            compileDict("svingeln", "lindholmen", countdown=False, first=True, dest="Lindholmen"),
             compileDict("lgh", "centralstn")
         ])
 
