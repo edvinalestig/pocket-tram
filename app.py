@@ -35,7 +35,8 @@ stopIDs = {
     "kungsstenvl": 9021014004101000,
     "brunnsparken": 9021014001760000,
     "centralstn": 9021014001950000,
-    "kapellplatsen": 9021014003760000
+    "kapellplatsen": 9021014003760000,
+    "tolvskilling": 9022014006790001
 }
 
 @app.route("/")
@@ -104,14 +105,16 @@ def req():
         deps = getDepartures([
             compileDict("markland", "kungssten"),
             compileDict("markland", "mariaplan"),
-            compileDict("mariaplan", "kungssten", offset=5)
+            compileDict("mariaplan", "kungssten", offset=5),
+            compileDict("markland", "tolvskilling")
         ])
 
         return json.dumps({
             "stops": {
                 "Mot Kungssten": deps[0],
                 "Mot Mariaplan (restid 6 min)": deps[1],
-                "Från Mariaplan": deps[2]
+                "Från Mariaplan": deps[2],
+                "Mot Högsbohöjd": deps[3]
             },
             "ts": getTrafficSituation(place)
         })
@@ -140,7 +143,9 @@ def req():
             compileDict("chalmers", "jt"),
             compileDict("jt", "kberget", offset=9),
             compileDict("chalmers", "markland", first=True, dest="Marklandsgatan"),
-            compileDict("markland", "kungssten", offset=9)
+            compileDict("markland", "kungssten", offset=9),
+            compileDict("chalmers", "vasaplatsen", first=True, dest="Vasaplatsen"),
+            compileDict("vasaplatsen", "jt", offset=4)
         ])
 
         return json.dumps({
@@ -149,7 +154,9 @@ def req():
                 "Mot Järntorget (restid 10 min)": deps[1],
                 "Från Järntorget": deps[2],
                 "Mot Marklandsgatan (restid 10 min)": deps[3],
-                "Från Marklandsgatan": deps[4]
+                "Från Marklandsgatan": deps[4],
+                "Mot Vasaplatsen (restid 5 min)": deps[5],
+                "Från Vasaplatsen": deps[6]
             },
             "ts": getTrafficSituation(place)
         })
