@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import math
 
 from utilityPages import UtilityPages
+import busPosition
 
 app = Flask(__name__)
 
@@ -98,7 +99,8 @@ def req():
                 "Nya Varvsallén": deps[1],
                 "Kungssten": deps[2]
             },
-            "ts": getTrafficSituation(place)
+            "ts": getTrafficSituation(place),
+            "comment": busPosition.getPosition(rp)
         })
     
     elif place == "markland":
@@ -230,6 +232,10 @@ def req():
     return json.dumps({
         "test":"test2"
     })
+
+@app.route("/test")
+def test():
+    return busPosition.getPosition(rp)
 
 # fr: From
 # to: To

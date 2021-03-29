@@ -33,6 +33,12 @@ body {
     padding-left: 3px;
 }
 
+.comment {
+    text-align: center;
+    margin: 0px;
+    padding: 0px;
+}
+
 #title {
     background-color: #d32f2f;
     color: white;

@@ -36,6 +36,7 @@ function killChildren(element) {
 
 function addDeparture(obj) {
     console.log(obj);
+    createComment(obj.comment);
     for (let box of Object.keys(obj.stops)) {
         createBox(box, obj.stops[box]);
     }
@@ -100,6 +101,17 @@ function createDisrBox(disruption) {
     description.classList.add("disrDescription");
     box.appendChild(title);
     box.appendChild(description);
+}
+
+function createComment(comment) {
+    if (comment) {
+        let box = document.createElement("div");
+        depbox.appendChild(box);
+        let c = document.createElement("p");
+        c.textContent = comment;
+        c.classList.add("comment");
+        box.appendChild(c);
+    }
 }
 
 function getDepartures() {
