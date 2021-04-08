@@ -329,8 +329,8 @@ def clean(obj, countdown, first, dest):
                 "line": line,
                 "dest": dest,
                 "time": [time],
-                "fgColor": dep.get("fgColor"),
-                "bgColor": dep.get("bgColor")
+                "fgColor": dep.get("bgColor"),
+                "bgColor": dep.get("fgColor")
             }
             outArr.append(vitals)
         
