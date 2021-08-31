@@ -5,14 +5,15 @@ const depbox = document.getElementById("departures");
 const title = document.getElementById("title");
 const places = {
     "chalmers": "Chalmers",
-    "lgh": "Lägenheten",
+    "lgh": "Mamma",
     "markland": "Marklandsgatan",
     "jt": "Järntorget",
-    "huset": "Huset",
+    "huset": "Pappa",
     "lindholmen": "Lindholmen",
     "kungssten": "Kungssten",
     "centrum": "Centrum",
-    "vasaplatsen": "Vasaplatsen"
+    "vasaplatsen": "Vasaplatsen",
+    "kapellplatsen": "Kapellplatsen"
 }
 
 function reset() {
