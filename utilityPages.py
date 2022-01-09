@@ -41,14 +41,14 @@ class UtilityPages:
             "TAXI": "🚕"
         }
 
-        html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body>'
+        html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body style="font-family: sans-serif">'
         html += "<a href='/utilities'>Till sökruta</a>"
         html += f"<h1>{stopName}, {depTime}, {depDate}</h1>"
         html += "\n<table>"
         html += "\n<tr><th>Linje</th><th>Destination</th><th>TT-tid</th><th>RT-tid</th><th>Låggolv</th><th>Läge</th><th>Typ</th><th>Inställd</th><th>Bokas?</th><th>Mer info</th></tr>"
         depRows = [(
             f'\n<tr style="border: 5px solid red;">'
-            f"<td style='background-color: {dep.get('fgColor')}; color: {dep.get('bgColor')}; text-align: center; border: 1px {dep.get('stroke')} {dep.get('bgColor')};'>{dep.get('sname')}</td>"
+            f"<td style='background-color: {dep.get('bgColor')}; color: {dep.get('fgColor')}; text-align: center; border: 1px {dep.get('stroke')} {dep.get('bgColor')};'>{dep.get('sname')}</td>"
             f"<td>{dep.get('direction')}</td>"
             f"<td style='text-align: center;'>{dep.get('time')}</td>"
             f"<td style='text-align: center;'>{dep.get('rtTime') if dep.get('rtTime') else '-'}</td>"
@@ -71,8 +71,8 @@ class UtilityPages:
     def getStyle(self, dep, stop):
         col = dep.get("Color")
         if type(col) == dict:
-            color = col.get("bgColor")
-            bg = col.get("fgColor")
+            color = col.get("fgColor")
+            bg = col.get("bgColor")
             stroke = col.get("stroke")
         else:
             idx = int(stop.get("routeIdx"))
@@ -122,7 +122,7 @@ class UtilityPages:
             '<style>td, tr {margin: 0px; padding-left: 5px; padding-right: 5px;}'
             'tr:nth-of-type(even) {border-bottom: 1px solid black;}'
             'table {border-collapse: collapse;}</style>'
-            '</head>\n<body>\n<table>\n')
+            '</head>\n<body style="font-family: sans-serif">\n<table>\n')
         # header here
         stops = [(
             f'<tr>'

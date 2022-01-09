@@ -13,7 +13,8 @@ const places = {
     "kungssten": "Kungssten",
     "centrum": "Centrum",
     "vasaplatsen": "Vasaplatsen",
-    "kapellplatsen": "Kapellplatsen"
+    "kapellplatsen": "Kapellplatsen",
+    "ica": "ICA"
 }
 
 function reset() {
@@ -116,12 +117,15 @@ function createComment(comment) {
 }
 
 function getDepartures() {
-    let xhr = new XMLHttpRequest();
-    xhr.open("GET", "/request?place="+place);
-    xhr.onload = () => {
-        departures = xhr.response
-        addDeparture(xhr.response);
-    }
-    xhr.responseType = "json";
-    xhr.send();
+    // let xhr = new XMLHttpRequest();
+    // xhr.open("GET", "/request?place="+place);
+    // xhr.onload = () => {
+    //     departures = xhr.response
+    //     addDeparture(xhr.response);
+    // }
+    // xhr.responseType = "json";
+    // xhr.send();
+    fetch("/request?place="+place)
+    .then(response => response.json())
+    .then(result => addDeparture(result))
 }

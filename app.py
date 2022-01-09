@@ -37,7 +37,10 @@ stopIDs = {
     "brunnsparken": 9021014001760000,
     "centralstn": 9021014001950000,
     "kapellplatsen": 9021014003760000,
-    "tolvskilling": 9022014006790001
+    "tolvskilling": 9022014006790001,
+    "korsvägen": 9022014003980021,
+    "varbergsgatan": 9022014007270002,
+    "valand": 9022014007220004
 }
 
 @app.route("/")
@@ -239,14 +242,42 @@ def req():
 
     elif place == "kapellplatsen":
         deps = getDepartures([
-            compileDict("kapellplatsen", "lindholmen")
+            compileDict("kapellplatsen", "lindholmen"),
+            compileDict("kapellplatsen", "brunnsparken", first=True, dest="Brunnsparken")
         ])
 
         return json.dumps({
             "stops": {
-                "Mot Lindholmen": deps[0]
-            }
+                "Mot Lindholmen": deps[0],
+                "Mot Brunnsparken": deps[1]
+            },
+            "ts": getTrafficSituation("kapellplatsen")
         })
+
+    elif place == "ica":
+        deps = getDepartures([
+            compileDict("kapellplatsen", "valand"),
+            compileDict("valand", "varbergsgatan"),
+            compileDict("chalmers", "korsvägen"),
+            compileDict("korsvägen", "varbergsgatan"),
+            compileDict("varbergsgatan", "korsvägen"),
+            compileDict("korsvägen", "chalmers"),
+            compileDict("valand", "kapellplatsen")
+        ])
+
+        return json.dumps({
+            "stops": {
+                "Kapellplatsen → Valand (4 min)": deps[0],
+                "Valand → ICA": deps[1],
+                "Chalmers → Korsvägen (4 min)": deps[2],
+                "Korsvägen → ICA": deps[3],
+                "ICA (7 min Korsvägen, 10 min Valand)": deps[4],
+                "Korsvägen → Chalmers": deps[5],
+                "Valand → Kapellplatsen": deps[6]
+            },
+            "ts": getTrafficSituation("ica")
+        })
+
 
     return json.dumps({
         "test":"test2"
@@ -372,6 +403,7 @@ def clean(obj, countdown, first, dest):
 def cut(s):
     s = s.split(" via ")[0]
     s = s.split(", Fri resa")[0]
+    s = s.split(", Påstigning fram")[0]
     return s
 
 def getDelay(dep):
@@ -485,7 +517,9 @@ def getTrafficSituation(place):
         "kungssten": ["Kungssten", "Kungssten Västerleden", "Lindholmen", "Järntorget", "Marklandsgatan"],
         "jt": ["Järntorget", "Kungssten", "Rengatan", "Nya Varvsallén", "Chalmers", "Ullevi Norra"],
         "centrum": ["Brunnsparken", "Centralstationen"],
-        "vasaplatsen": ["Vasaplatsen", "Chalmers", "Järntorget"]
+        "vasaplatsen": ["Vasaplatsen", "Chalmers", "Järntorget"],
+        "kapellplatsen": ["Kapellplatsen", "Vasaplatsen", "Lindholmen"],
+        "ica": ["Kapellplatsen", "Chalmers", "Valand", "Korsvägen", "Varbergsgatan"]
     }
 
     names = placeStops.get(place)
