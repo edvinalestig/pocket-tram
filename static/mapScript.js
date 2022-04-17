@@ -4,7 +4,7 @@ function addStop(map, stopInfo) {
     const popup = new mapboxgl.Popup()
         .setText(stopInfo.name + ", läge " + stopInfo.track);
 
-    const marker = new mapboxgl.Marker()
+    const marker = new mapboxgl.Marker({"scale": 0.3})
         .setLngLat([stopInfo.lon, stopInfo.lat])
         .setPopup(popup)
         .addTo(map);
@@ -27,6 +27,20 @@ function addLine(map, color, points) {
             }
         });
         map.addLayer({
+            'id': 'routeOutline',
+            'type': 'line',
+            'source': 'route',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': {
+                'line-color': color.fgColor,
+                'line-width': 1.5,
+                'line-gap-width': 5
+            }
+        })
+        map.addLayer({
             'id': 'route',
             'type': 'line',
             'source': 'route',
@@ -35,8 +49,8 @@ function addLine(map, color, points) {
                 'line-cap': 'round'
             },
             'paint': {
-                'line-color': color,
-                'line-width': 8
+                'line-color': color.bgColor,
+                'line-width': 5
             }
         });
     })
@@ -50,7 +64,9 @@ const geoRef = atob(args.get("geoRef"));
 fetch("/mapdata?geoRef=" + geoRef + "&depRef=" + depRef)
     .then(response => response.json())
     .then(obj => {
-        document.getElementById("title").innerText = obj.name;
+        const title = document.getElementById("title");
+        title.innerText = obj.name;
+        title.style = "color:" +  obj.color.fgColor + "; background-color:" + obj.color.bgColor;
 
         firstStop = obj.stops[0];
 
@@ -63,7 +79,7 @@ fetch("/mapdata?geoRef=" + geoRef + "&depRef=" + depRef)
 
         console.log(obj);
 
-        addLine(map, obj.color.bgColor, obj.geometry);
+        addLine(map, obj.color, obj.geometry);
 
         for (s of obj.stops) {
             addStop(map, s);

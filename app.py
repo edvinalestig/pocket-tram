@@ -59,7 +59,10 @@ def utilities():
 
 @app.route("/findDepartures")
 def findDepartures():
-    return utilPages.searchStop(request.args)
+    if request.args.get("moreInfo") == "on":
+        return utilPages.searchStop(request.args)
+    else:
+        return utilPages.simpleSearchStop(request.args)
 
 @app.route("/depInfo")
 def depInfo():

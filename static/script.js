@@ -2,6 +2,7 @@ let place;
 let departures;
 const choicebox = document.getElementById("setup");
 const depbox = document.getElementById("departures");
+const utilLink = document.getElementById("utilityLink");
 const title = document.getElementById("title");
 const places = {
     "chalmers": "Chalmers",
@@ -20,6 +21,7 @@ const places = {
 function reset() {
     killChildren(depbox);
     choicebox.classList.remove("hide");
+    utilLink.classList.remove("hide");
     title.innerHTML = "Välj plats";
 }
 
@@ -27,6 +29,7 @@ function choose(p) {
     place = p;
     title.innerHTML = places[place];
     choicebox.classList.add("hide");
+    utilLink.classList.add("hide")
     getDepartures();
 }
 

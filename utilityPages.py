@@ -10,13 +10,23 @@ def getDelay(dep, ank=False):
     if dep.get("cancelled"):
         return " X"
 
-    # Check if real time info is available
-    tttime = dep.get("depTime" if not ank else "arrTime")
-    rttime = dep.get("rtDepTime" if not ank else "rtArrTime")
-    if rttime == None:
-        return ""
-    ttdate = dep.get("depDate" if not ank else "arrDate")
-    rtdate = dep.get("rtDepDate" if not ank else "rtArrDate")
+    # VT are very consistent
+    if dep.get("time"):
+        tttime = dep.get("time")
+        rttime = dep.get("rtTime")
+        # Check if real time info is available
+        if rttime == None:
+            return ""
+        ttdate = dep.get("date")
+        rtdate = dep.get("rtDate")
+    else:
+        tttime = dep.get("depTime" if not ank else "arrTime")
+        rttime = dep.get("rtDepTime" if not ank else "rtArrTime")
+        # Check if real time info is available
+        if rttime == None:
+            return ""
+        ttdate = dep.get("depDate" if not ank else "arrDate")
+        rtdate = dep.get("rtDepDate" if not ank else "rtArrDate")
 
     ttdt = convertToDatetime(tttime, ttdate)
     rtdt = convertToDatetime(rttime, rtdate)
@@ -96,6 +106,52 @@ class UtilityPages:
             f"<td style='text-align: center;'>{'🔴' if dep.get('cancelled') else '🟢'}</td>"
             f'<td style="text-align: center;">{"Ja" if dep.get("booking") else "Nej"}</td>'
             f"<td style='text-align: center;'><a href='/depInfo?ref={dep.get('JourneyDetailRef').get('ref').split('?ref=')[1]}'>Mer info</a></td>"
+            f"</tr>"
+            ) for dep in departures]
+        
+        html += "".join(depRows)
+        html += "\n</table>"
+        html += f"<br><a href='/findDepartures?stop={stopName}&time={departures[-1].get('time')}&date={departures[-1].get('date')}&moreInfo=on'>Fler avgångar</a>"
+        html += "\n</body>\n</html>"
+
+        return html
+
+    def simpleSearchStop(self, args):
+        if args.get("stop"):
+            stop = self.resep.location_name(input=args.get("stop")).get("LocationList").get("StopLocation")
+            if type(stop) == list:
+                stop = stop[0]
+            stopName = stop.get("name")
+            stopID = stop.get("id")
+        else:
+            stopID = args.get("stopId")
+            stopName = args.get("stopName")
+            
+        depTime = args.get("time") if args.get("time") else datetime.now(tz.gettz("Europe/Stockholm")).strftime("%H:%M")
+        depDate = args.get("date") if args.get("date") else datetime.now(tz.gettz("Europe/Stockholm")).strftime("%Y%m%d")
+
+        departures = self.resep.departureBoard(id=stopID, date=depDate, time=depTime).get("DepartureBoard").get("Departure")
+
+        with open("deps.json", "w") as f:
+            f.write(json.dumps(departures))
+
+        if not departures:
+            return "<a href='/utilities'>Inga avgångar</a>"
+
+        if type(departures) == dict:
+            departures = [departures]
+
+        html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body style="font-family: sans-serif">'
+        html += "<a href='/utilities'>Till sökruta</a>"
+        html += f"<h1>{stopName}, {depTime}, {depDate}</h1>"
+        html += "\n<table>"
+        html += "\n<tr><th>Linje</th><th>Destination</th><th>Tid</th><th>Läge</th></tr>"
+        depRows = [(
+            f'\n<tr style="border: 5px solid red;">'
+            f"<td style='background-color: {dep.get('bgColor')}; color: {dep.get('fgColor')}; text-align: center; border: 1px {dep.get('stroke')} {dep.get('bgColor')};'>{dep.get('sname')}</td>"
+            f"<td><a href='/simpleDepInfo?ref={dep.get('JourneyDetailRef').get('ref').split('?ref=')[1]}'>{dep.get('direction').split(', Påstigning fram')[0]}</a></td>"
+            f"<td style='text-align: center;'>{dep.get('time') + getDelay(dep)}</td>"
+            f"<td style='text-align: center;'>{dep.get('track')}</td>"
             f"</tr>"
             ) for dep in departures]
         
@@ -189,8 +245,7 @@ class UtilityPages:
         b64Dep = base64.b64encode(refArg.encode("ascii")).decode("ascii")
         b64Geo = base64.b64encode(georef.encode("ascii")).decode("ascii")
 
-        # b64Geo = base64_encode(georef).decode("ascii")
-        # b64Dep = base64_encode(refArg).decode("ascii")
+
         html += f'\n<a href="/map?depRef={b64Dep}&geoRef={b64Geo}">Map</a>'
         html += f'\n<a href="/getgeometry?ref={georef}">Geometry</a>'
         html += "\n</body>\n</html>"
@@ -209,19 +264,23 @@ class UtilityPages:
         with open("dep.json", "w") as f:
             f.write(json.dumps(dep))
 
+        stop = dep.get("Stop")[0]
         html = (
             '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n'
             '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
             '<title>Avgångar</title>\n'
             '<style>td, tr {margin: 0px; padding-left: 5px; padding-right: 5px;}'
-            'tr:nth-of-type(even) {border-bottom: 1px solid black;}'
+            'tr:nth-of-type(odd) {border-bottom: 1px solid black;}'
             'table {border-collapse: collapse; border: 1px solid black;}</style>'
-            '</head>\n<body style="font-family: sans-serif">\n<table>\n')
+            '</head>\n<body style="font-family: sans-serif">\n<table>\n'
+            '<tr>\n'
+            # f'<td style="{self.getStyle(dep, stop)}">{}</td>\n'
+            # f'<td colspan="2" style="{self.getStyle(dep, stop)}"></td>\n'
+            f'<td colspan="3" style="{self.getStyle(dep, stop)}">{self.getLine(dep, stop)} {self.getDestination(dep, stop)}</td>'
+            '</tr>\n')
         # header here
         stops = [(
             f'<tr>'
-            f'<td rowspan="2"  style="{self.getStyle(dep, stop)}">{self.getLine(dep, stop)}</td>'
-            f'<td rowspan="2"  style="{self.getStyle(dep, stop)}">{self.getDestination(dep, stop)}</td>'
             f'<td rowspan="2"><a href="/findDepartures'
                 f'?stopId={stop.get("id")}'
                 f'&stopName={stop.get("name")}'

@@ -7,6 +7,17 @@ body {
     background-color: #eceff1;
 }
 
+#utilityLink {
+    text-align: center;
+    text-decoration: none;
+    color: black;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+
+div#utilityLink {
+    padding-top: 30px;
+}
+
 .hide {
     display: none;
 }
