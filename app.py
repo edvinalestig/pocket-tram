@@ -65,9 +65,21 @@ def findDepartures():
 def depInfo():
     return utilPages.depInfo(request.args)
 
+@app.route("/simpleDepInfo")
+def simpleDepInfo():
+    return utilPages.simpleDepInfo(request.args)
+
 @app.route("/getgeometry")
 def getgeometry():
     return utilPages.getGeometry(request.args)
+
+@app.route("/map")
+def routemap():
+    return send_file("static/map.html")
+
+@app.route("/mapdata")
+def routedata():
+    return utilPages.routemap(request.args)
 
 @app.route("/request")
 def req():

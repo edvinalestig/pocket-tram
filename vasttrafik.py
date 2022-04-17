@@ -240,7 +240,7 @@ class Reseplaneraren():
 
     def request(self, url):
         header = {"Authorization": self.auth.token}
-        response = requests.get(url, headers=header)
+        response = requests.get(url + "&format=json", headers=header)
         response = self.auth.checkResponse(response)
 
         return response.json()
