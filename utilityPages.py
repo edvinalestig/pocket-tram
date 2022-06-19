@@ -91,7 +91,7 @@ class UtilityPages:
 
         html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body style="font-family: sans-serif">'
         html += "<a href='/utilities'>Till sökruta</a>"
-        html += f"<h1>{stopName}, {depTime}, {depDate}</h1>"
+        html += f"<h2>{stopName}, {depTime}, {depDate}</h2>"
         html += "\n<table>"
         html += "\n<tr><th>Linje</th><th>Destination</th><th>TT-tid</th><th>RT-tid</th><th>Låggolv</th><th>Läge</th><th>Typ</th><th>Inställd</th><th>Bokas?</th><th>Mer info</th></tr>"
         depRows = [(
@@ -143,7 +143,7 @@ class UtilityPages:
 
         html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body style="font-family: sans-serif">'
         html += "<a href='/utilities'>Till sökruta</a>"
-        html += f"<h1>{stopName}, {depTime}, {depDate}</h1>"
+        html += f"<h2>{stopName}, {depTime}, {depDate}</h2>"
         html += "\n<table>"
         html += "\n<tr><th>Linje</th><th>Destination</th><th>Tid</th><th>Läge</th></tr>"
         depRows = [(
@@ -253,7 +253,7 @@ class UtilityPages:
         return html
 
     def simpleDepInfo(self, args):
-        refArg: str | None = args.get("ref")
+        refArg = args.get("ref")
         if not refArg:
             return "<a href='/utilities'>Ingen referens</a>"
         ref = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail?ref=" + refArg

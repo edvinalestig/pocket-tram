@@ -37,10 +37,12 @@ stopIDs = {
     "brunnsparken": 9021014001760000,
     "centralstn": 9021014001950000,
     "kapellplatsen": 9021014003760000,
-    "tolvskilling": 9022014006790001,
-    "korsvägen": 9022014003980021,
-    "varbergsgatan": 9022014007270002,
-    "valand": 9022014007220004
+    "tolvskilling": 9022014006790000,
+    "korsvägen": 9022014003980000,
+    "varbergsgatan": 9022014007270000,
+    "valand": 9022014007220000,
+    "regnbågsgatan": 9022014005465000,
+    "nordstan": 9022014004945000
 }
 
 @app.route("/")
@@ -222,17 +224,19 @@ def req():
     elif place == "centrum":
         deps = getDepartures([
             compileDict("brunnsparken", "kapellplatsen"),
-            compileDict("brunnsparken", "lgh"),
-            compileDict("centralstn", "svingeln"),
-            compileDict("centralstn", "chalmers")
+            # compileDict("brunnsparken", "lgh"),
+            # compileDict("centralstn", "svingeln"),
+            compileDict("centralstn", "chalmers"),
+            compileDict("nordstan", "lindholmen", first=True, dest="Lindholmen")
         ])
 
         return json.dumps({
             "stops": {
                 "Brunnsparken → Kapellplatsen": deps[0],
-                "Brunnsparken → Ullevi Norra": deps[1],
-                "Centralen → Svingeln": deps[2],
-                "Centralen → Chalmers": deps[3]
+                # "Brunnsparken → Ullevi Norra": deps[1],
+                # "Centralen → Svingeln": deps[2],
+                "Centralen → Chalmers": deps[1],
+                "Nordstan → Lindholmen": deps[2]
             },
             "ts": getTrafficSituation("centrum")
         })
@@ -291,6 +295,22 @@ def req():
                 "Valand → Kapellplatsen": deps[6]
             },
             "ts": getTrafficSituation("ica")
+        })
+
+    elif place == "regnbågsgatan":
+        deps = getDepartures([
+            compileDict("regnbågsgatan", "kapellplatsen"),
+            compileDict("regnbågsgatan", "nordstan", first=True, dest="Nordstan"),
+            compileDict("lpiren", "stenpiren")
+        ])
+
+        return json.dumps({
+            "stops": {
+                "Mot Kapellplatsen": deps[0],
+                "Mot Nordstan": deps[1],
+                "Båt": deps[2]
+            },
+            "ts": getTrafficSituation("regnbågsgatan")
         })
 
 
@@ -531,10 +551,11 @@ def getTrafficSituation(place):
         "markland": ["Marklandsgatan", "Kungssten", "Mariaplan", "Chalmers"],
         "kungssten": ["Kungssten", "Kungssten Västerleden", "Lindholmen", "Järntorget", "Marklandsgatan"],
         "jt": ["Järntorget", "Kungssten", "Rengatan", "Nya Varvsallén", "Chalmers", "Ullevi Norra"],
-        "centrum": ["Brunnsparken", "Centralstationen"],
+        "centrum": ["Brunnsparken", "Centralstationen", "Nordstan"],
         "vasaplatsen": ["Vasaplatsen", "Chalmers", "Järntorget"],
         "kapellplatsen": ["Kapellplatsen", "Vasaplatsen", "Lindholmen"],
-        "ica": ["Kapellplatsen", "Chalmers", "Valand", "Korsvägen", "Varbergsgatan"]
+        "ica": ["Kapellplatsen", "Chalmers", "Valand", "Korsvägen", "Varbergsgatan"],
+        "regnbågsgatan": ["Regnbågsgatan", "Brunnsparken", "Kapellplatsen"]
     }
 
     names = placeStops.get(place)

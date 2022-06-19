@@ -15,7 +15,8 @@ const places = {
     "centrum": "Centrum",
     "vasaplatsen": "Vasaplatsen",
     "kapellplatsen": "Kapellplatsen",
-    "ica": "ICA"
+    "ica": "ICA",
+    "regnbågsgatan": "Regnbågsgatan"
 }
 
 function reset() {
@@ -131,4 +132,11 @@ function getDepartures() {
     fetch("/request?place="+place)
     .then(response => response.json())
     .then(result => addDeparture(result))
+    .catch(error => addDeparture({
+        stops: {},
+        ts: [{
+            title: error,
+            description: ""
+        }]
+    }))
 }
