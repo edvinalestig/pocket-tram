@@ -53,7 +53,23 @@ function addLine(map, color, points) {
                 'line-width': 5
             }
         });
-    })
+    });
+}
+
+function getBounds(geometry) {
+    const w = geometry.reduce((prev, curr) => {
+        return prev < curr.lon*1 ? prev : curr.lon*1;
+    }, Infinity);
+    const n = geometry.reduce((prev, curr) => {
+        return prev > curr.lat*1 ? prev : curr.lat*1;
+    }, -Infinity);
+    const e = geometry.reduce((prev, curr) => {
+        return prev > curr.lon*1 ? prev : curr.lon*1;
+    }, -Infinity);
+    const s = geometry.reduce((prev, curr) => {
+        return prev < curr.lat*1 ? prev : curr.lat*1;
+    }, Infinity);
+    return [w,s,e,n];
 }
 
 let map;
@@ -84,6 +100,7 @@ fetch("/mapdata?geoRef=" + geoRef + "&depRef=" + depRef)
         for (s of obj.stops) {
             addStop(map, s);
         }
+        map.fitBounds(getBounds(obj.geometry), {padding: 20});
     });
 
 
