@@ -282,7 +282,7 @@ class UtilityPages:
         stops = [(
             f'<tr>'
             f'<td rowspan="2"><a href="/findDepartures'
-                f'?stopId={stop.get("id")}'
+                f'?stopId={stop.get("id")[:-4] + "0000"}'
                 f'&stopName={stop.get("name")}'
                 f'&date={stop.get("arrDate") if stop.get("arrDate") else stop.get("depDate")}'
                 f'&time={stop.get("arrTime") if stop.get("arrTime") else stop.get("depTime")}"'
