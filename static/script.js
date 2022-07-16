@@ -19,11 +19,13 @@ const places = {
     "vasaplatsen": "Vasaplatsen",
     "kapellplatsen": "Kapellplatsen",
     "ica": "ICA",
-    "regnbågsgatan": "Regnbågsgatan"
+    "regnbågsgatan": "Regnbågsgatan",
+    "frihamnen": "Frihamnen"
 }
 
 function reset() {
     clearTimeout(timeout);
+    updateTime = null;
     killChildren(depbox);
     choicebox.classList.remove("hide");
     utilLink.classList.remove("hide");
