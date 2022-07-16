@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VT Utility Tool</title>
-    <link rel="stylesheet" href="util.css">
+    <link rel="stylesheet" href="static/util.css">
 </head>
 <body style="padding: 15px; text-align: center;">
     <form action="findDepartures">
         <label for="stop">Hållplats</label>
         <br>
-        <input type="text" id="stop" name="stop" placeholder="Hållplatsnamn">
+        <input type="text" id="stop" name="stop" placeholder="Hållplatsnamn" list="stoplist" autocomplete="off">
         <br>
         <label for="date">Datum (lämna blankt för idag)</label>
         <br>
@@ -25,6 +25,14 @@
         <br>
         <input type="submit" value="Sök">
     </form>
+    <br>
+    <br>
+    <br>
     <a href="/">Tillbaka</a>
+    <datalist id="stoplist">
+        <option value="Inga resultat"></option>
+    </datalist>
+    
+    <script src="static/utilpages.js"></script>
 </body>
 </html>

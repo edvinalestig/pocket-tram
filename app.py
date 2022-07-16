@@ -66,6 +66,10 @@ def findDepartures():
     else:
         return utilPages.simpleSearchStop(request.args)
 
+@app.route("/findArrivals")
+def findArrivals():
+    return utilPages.simpleStopArrivals(request.args)
+
 @app.route("/depInfo")
 def depInfo():
     return utilPages.depInfo(request.args)

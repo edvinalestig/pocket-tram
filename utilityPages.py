@@ -116,7 +116,7 @@ class UtilityPages:
 
         return html
 
-    def simpleSearchStop(self, args):
+    def simpleSearchStop(self, args: dict):
         if args.get("stop"):
             stop = self.resep.location_name(input=args.get("stop")).get("LocationList").get("StopLocation")
             if type(stop) == list:
@@ -144,6 +144,7 @@ class UtilityPages:
         html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body style="font-family: sans-serif">'
         html += "<a href='/utilities'>Till sökruta</a>"
         html += f"<h2>{stopName}, {depTime}, {depDate}</h2>"
+        html += f"<a href='/findArrivals?{'&'.join([f'{k}={v}' for k,v in args.items()])}'>Ankomster</a>"
         html += "\n<table>"
         html += "\n<tr><th>Linje</th><th>Destination</th><th>Tid</th><th>Läge</th></tr>"
         depRows = [(
@@ -161,6 +162,9 @@ class UtilityPages:
         html += "\n</body>\n</html>"
 
         return html
+
+    def simpleStopArrivals(self, args: dict):
+        return json.dumps(args)
 
     def getStyle(self, dep, stop):
         col = dep.get("Color")
@@ -282,7 +286,7 @@ class UtilityPages:
         stops = [(
             f'<tr>'
             f'<td rowspan="2"><a href="/findDepartures'
-                f'?stopId={stop.get("id")[:-4] + "0000"}'
+                f'?stopId={stop.get("id")[:-3] + "000"}'
                 f'&stopName={stop.get("name")}'
                 f'&date={stop.get("arrDate") if stop.get("arrDate") else stop.get("depDate")}'
                 f'&time={stop.get("arrTime") if stop.get("arrTime") else stop.get("depTime")}"'
