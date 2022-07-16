@@ -27,11 +27,10 @@ class Auth():
         }
         url = f'https://api.vasttrafik.se/token?grant_type=client_credentials&scope={self.scope}'
         response = requests.post(url, headers=header)
+
+        response.raise_for_status()
+
         responseDict = response.json()
-
-        if response.status_code != 200:
-            raise requests.exceptions.HTTPError(f'{response.status_code} {responseDict.get("error_description")}')
-
         self.token = "Bearer " + responseDict.get("access_token")
 
 
@@ -42,21 +41,20 @@ class Auth():
             header = {"Authorization": self.token}
             response = requests.get(response.url, headers=header)
 
-        responseDict = response.json()
-        if response.status_code != 200:
-            raise requests.exceptions.HTTPError(f'{response.status_code} {responseDict.get("error_description")}')
+        response.raise_for_status()
 
-        return response
+        try:
+            return response.json()
+        except requests.exceptions.JSONDecodeError as e:
+            print(e)
+            with open("error.txt", "w") as f:
+                f.write(str(response.content))
+            raise Exception()
+
 
     def checkResponses(self, response_list):
-        fine = True
-        for resp in response_list:
-            # Check for any errors
-            if resp.status_code != 200:
-                fine = False
-
-        if fine:
-            return response_list
+        if all([r.status_code == 200 for r in response_list]):
+            return [r.json() for r in response_list]
         else:
             print("Renewing token..")
             self.__renewToken()
@@ -72,14 +70,11 @@ class Auth():
                 time.sleep(0.01)
 
             # Get the results
-            resps = []
-            for req in reqs:
-                resps.append(req.result())
+            resps = [req.result() for req in reqs]
+            for res in resps:
+                res.raise_for_status()
 
-            if resps[0].status_code != 200:
-                raise requests.exceptions.HTTPError(f'{resps[0].status_code} {resps[0].reason}')
-
-            return resps
+            return [r.json() for r in resps]
 
 
 class Reseplaneraren():
@@ -95,9 +90,8 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
+        return self.auth.checkResponse(response)
 
-        return response.json()
 
 
     def location_nearbyaddress(self, **kwargs):
@@ -106,9 +100,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
  
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def location_nearbystops(self, **kwargs):
@@ -117,9 +109,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def location_allstops(self, **kwargs):
@@ -128,9 +118,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def location_name(self, **kwargs):
@@ -139,9 +127,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def systeminfo(self, **kwargs):
@@ -150,9 +136,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def livemap(self, **kwargs):
@@ -161,9 +145,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def journeyDetail(self, ref):
@@ -171,9 +153,7 @@ class Reseplaneraren():
         url = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail"
 
         response = requests.get(url, headers=header, params={"ref":ref})
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def geometry(self, ref):
@@ -181,9 +161,7 @@ class Reseplaneraren():
         url = "https://api.vasttrafik.se/bin/rest.exe/v2/geometry"
 
         response = requests.get(url, headers=header, params={"ref":ref})
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def departureBoard(self, **kwargs):
@@ -192,9 +170,7 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def asyncDepartureBoards(self, request_list):
@@ -211,20 +187,10 @@ class Reseplaneraren():
             reqs.append(future)
             time.sleep(0.02) # Without this everything breaks
 
-        responses = []
-        for req in reqs:
-            # Get the results
-            r = req.result()
-            responses.append(r)
+        responses = [req.result() for req in reqs]
 
         # Check for errors
-        resp = self.auth.checkResponses(responses)
-
-        output = []
-        for response in resp:
-            output.append(response.json())
-
-        return output
+        return self.auth.checkResponses(responses)
 
 
     def arrivalBoard(self, **kwargs):
@@ -233,17 +199,13 @@ class Reseplaneraren():
         kwargs["format"] = "json"
 
         response = requests.get(url, headers=header, params=kwargs)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
     def request(self, url):
         header = {"Authorization": self.auth.token}
         response = requests.get(url + "&format=json", headers=header)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
 
 class TrafficSituations():
@@ -257,9 +219,7 @@ class TrafficSituations():
     def __get(self, url):
         header = {"Authorization": self.auth.token}
         response = requests.get(url, headers=header)
-        response = self.auth.checkResponse(response)
-
-        return response.json()
+        return self.auth.checkResponse(response)
 
     
     def trafficsituations(self):

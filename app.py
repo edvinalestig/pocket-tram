@@ -93,6 +93,7 @@ def routedata():
 @app.route("/request")
 def req():
     place = request.args.get("place")
+    timeNow = datetime.now(tz.gettz("Europe/Stockholm")).strftime("%H:%M:%S")
 
     if place == "lgh":
         deps = getDepartures([
@@ -107,7 +108,8 @@ def req():
                 "Mot Lindholmen": deps[1],
                 "Mot Centralstationen": deps[2]
             },
-            "ts": getTrafficSituation(place)
+            "ts": getTrafficSituation(place),
+            "time": timeNow
         })
 
     elif place == "huset":
@@ -124,7 +126,8 @@ def req():
                 "Kungssten": deps[2]
             },
             "ts": getTrafficSituation(place),
-            "comment": busPosition.getPosition(rp)
+            "comment": busPosition.getPosition(rp),
+            "time": timeNow
         })
     
     elif place == "markland":
@@ -144,7 +147,8 @@ def req():
                 "Från Mariaplan": deps[3],
                 "Mot Högsbohöjd": deps[4]
             },
-            "ts": getTrafficSituation(place)
+            "ts": getTrafficSituation(place),
+            "time": timeNow
         })
 
     elif place == "jt":
@@ -162,7 +166,8 @@ def req():
                 "Mot Pappa": deps[2],
                 "Mot Mamma": deps[3]
             },
-            "ts": getTrafficSituation(place)
+            "ts": getTrafficSituation(place),
+            "time": timeNow
         })
 
     elif place == "chalmers":
@@ -188,7 +193,8 @@ def req():
                 "Mot Vasaplatsen (restid 5 min)": deps[5],
                 "Från Vasaplatsen": deps[6]
             },
-            "ts": getTrafficSituation(place)
+            "ts": getTrafficSituation(place),
+            "time": timeNow
         })
 
     elif place == "lindholmen":
@@ -206,7 +212,8 @@ def req():
                 "Mot Kungssten": deps[1],
                 "Båt": deps[2]
             },
-            "ts": getTrafficSituation(place)
+            "ts": getTrafficSituation(place),
+            "time": timeNow
         })
 
     elif place == "kungssten":
@@ -222,7 +229,8 @@ def req():
                 "Mot Marklandsgatan": deps[1],
                 "Mot Lindholmen": deps[2]
             },
-            "ts": getTrafficSituation(place)
+            "ts": getTrafficSituation(place),
+            "time": timeNow
         })
         
     elif place == "centrum":
@@ -242,7 +250,8 @@ def req():
                 "Centralen → Chalmers": deps[1],
                 "Nordstan → Lindholmen": deps[2]
             },
-            "ts": getTrafficSituation("centrum")
+            "ts": getTrafficSituation("centrum"),
+            "time": timeNow
         })
 
     elif place == "vasaplatsen":
@@ -260,7 +269,8 @@ def req():
                 "Mot Chalmers": deps[2],
                 "Mot Ullevi Norra": deps[3]
             },
-            "ts": getTrafficSituation("vasaplatsen")
+            "ts": getTrafficSituation("vasaplatsen"),
+            "time": timeNow
         })
 
     elif place == "kapellplatsen":
@@ -274,7 +284,8 @@ def req():
                 "Mot Lindholmen": deps[0],
                 "Mot Brunnsparken": deps[1]
             },
-            "ts": getTrafficSituation("kapellplatsen")
+            "ts": getTrafficSituation("kapellplatsen"),
+            "time": timeNow
         })
 
     elif place == "ica":
@@ -298,7 +309,8 @@ def req():
                 "Korsvägen → Chalmers": deps[5],
                 "Valand → Kapellplatsen": deps[6]
             },
-            "ts": getTrafficSituation("ica")
+            "ts": getTrafficSituation("ica"),
+            "time": timeNow
         })
 
     elif place == "regnbågsgatan":
@@ -314,12 +326,14 @@ def req():
                 "Mot Nordstan": deps[1],
                 "Båt": deps[2]
             },
-            "ts": getTrafficSituation("regnbågsgatan")
+            "ts": getTrafficSituation("regnbågsgatan"),
+            "time": timeNow
         })
 
 
     return json.dumps({
-        "test":"test2"
+        "test":"test2",
+        "time": timeNow
     })
 
 @app.route("/test")
@@ -489,7 +503,7 @@ def calculateCountdown(departure):
     # Time left:
     countdown = depTime - timeNow.replace(tzinfo=None)
     # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
-    countdown = countdown.days * 1440 + math.ceil(countdown.seconds/60)
+    countdown = countdown.days * 1440 + math.floor(countdown.seconds/60)
 
 
     if realtime:
@@ -548,31 +562,25 @@ def prioTimes(t):
 def getTrafficSituation(place):
     # Stops to check for each place
     placeStops = {
-        "lgh": ["Ullevi Norra", "Svingeln", "Chalmers"],
-        "chalmers": ["Chalmers", "Ullevi Norra", "Järntorget", "Marklandsgatan"],
-        "huset": ["Rengatan", "Nya Varvsallén", "Nya Varvsallen", "Järntorget"],
-        "lindholmen": ["Lindholmen", "Lindholmspiren", "Svingeln", "Stenpiren"],
-        "markland": ["Marklandsgatan", "Kungssten", "Mariaplan", "Chalmers"],
-        "kungssten": ["Kungssten", "Kungssten Västerleden", "Lindholmen", "Järntorget", "Marklandsgatan"],
-        "jt": ["Järntorget", "Kungssten", "Rengatan", "Nya Varvsallén", "Chalmers", "Ullevi Norra"],
-        "centrum": ["Brunnsparken", "Centralstationen", "Nordstan"],
-        "vasaplatsen": ["Vasaplatsen", "Chalmers", "Järntorget"],
-        "kapellplatsen": ["Kapellplatsen", "Vasaplatsen", "Lindholmen"],
-        "ica": ["Kapellplatsen", "Chalmers", "Valand", "Korsvägen", "Varbergsgatan"],
-        "regnbågsgatan": ["Regnbågsgatan", "Brunnsparken", "Kapellplatsen"]
+        "lgh": ["lgh", "svingeln", "chalmers"],
+        "chalmers": ["chalmers", "lgh", "jt", "markland"],
+        "huset": ["huset1", "huset2", "jt"],
+        "lindholmen": ["lindholmen", "lpiren", "svingeln", "stenpiren"],
+        "markland": ["markland", "kungssten", "mariaplan", "chalmers"],
+        "kungssten": ["kungssten", "kungsstenvl", "lindholmen", "jt", "markland"],
+        "jt": ["jt", "kungssten", "huset1", "huset2", "chalmers", "lgh"],
+        "centrum": ["brunnsparken", "centralstn", "nordstan"],
+        "vasaplatsen": ["vasaplatsen", "chalmers", "jt"],
+        "kapellplatsen": ["kapellplatsen", "vasaplatsen", "lindholmen"],
+        "ica": ["kapellplatsen", "chalmers", "valand", "korsvägen", "varbergsgatan"],
+        "regnbågsgatan": ["regnbågsgatan", "brunnsparken", "kapellplatsen"]
     }
 
-    names = placeStops.get(place)
-
-    arr = []
-    traffic = ts.trafficsituations()
-    for situation in traffic:
-        for stop in situation.get("affectedStopPoints"):
-            name = stop.get("name")
-            # Get only disruptions concerning the nearby stops
-            if name in names:
-                arr.append(situation)
-                break
+    traffic = [ts.stoparea(stopIDs[stop]) for stop in placeStops[place]]
+    arr = [x for xs in traffic for x in xs] # Flatten list
+    
+    with open("ts.json", "w") as f:
+        f.write(json.dumps(traffic))
 
     outarr = []
     for situation in arr:

@@ -44,7 +44,7 @@ div#utilityLink {
     padding-left: 3px;
 }
 
-.comment {
+.comment, p {
     text-align: center;
     margin: 0px;
     padding: 0px;

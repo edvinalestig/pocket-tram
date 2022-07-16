@@ -1,9 +1,12 @@
 let place;
 let departures;
+let timeout;
+let updateTime;
 const choicebox = document.getElementById("setup");
 const depbox = document.getElementById("departures");
 const utilLink = document.getElementById("utilityLink");
 const title = document.getElementById("title");
+const timeSpan = document.getElementById("time");
 const places = {
     "chalmers": "Chalmers",
     "lgh": "Mamma",
@@ -20,6 +23,7 @@ const places = {
 }
 
 function reset() {
+    clearTimeout(timeout);
     killChildren(depbox);
     choicebox.classList.remove("hide");
     utilLink.classList.remove("hide");
@@ -30,7 +34,7 @@ function choose(p) {
     place = p;
     title.innerHTML = places[place];
     choicebox.classList.add("hide");
-    utilLink.classList.add("hide")
+    utilLink.classList.add("hide");
     getDepartures();
 }
 
@@ -41,7 +45,9 @@ function killChildren(element) {
 }
 
 function addDeparture(obj) {
+    killChildren(depbox);
     console.log(obj);
+    updateTime = obj.time ? obj.time : null;
     createComment(obj.comment);
     for (let box of Object.keys(obj.stops)) {
         createBox(box, obj.stops[box]);
@@ -49,6 +55,8 @@ function addDeparture(obj) {
     for (let disr of obj.ts) {
         createDisrBox(disr);
     }
+    clearTimeout(timeout);
+    timeout = setTimeout(getDepartures, 10000);
 }
 
 function createBox(title, contents) {
@@ -130,7 +138,10 @@ function getDepartures() {
     // xhr.responseType = "json";
     // xhr.send();
     fetch("/request?place="+place)
-    .then(response => response.json())
+    .then(response => {
+        if (response.ok) return response.json();
+        else throw new Error(response.status + " " + response.statusText);
+    })
     .then(result => addDeparture(result))
     .catch(error => addDeparture({
         stops: {},
@@ -140,3 +151,14 @@ function getDepartures() {
         }]
     }))
 }
+
+function updateClock() {
+    if (updateTime) {
+        timeSpan.innerHTML = "Uppd. " + updateTime + " | " + new Date().toLocaleTimeString();
+    } else {
+        timeSpan.innerHTML = new Date().toLocaleTimeString();
+    }
+    setTimeout(updateClock, 200);
+}
+
+updateClock();
