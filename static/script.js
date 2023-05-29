@@ -19,8 +19,9 @@ const places = {
     "vasaplatsen": "Vasaplatsen",
     "kapellplatsen": "Kapellplatsen",
     "ica": "ICA",
-    "regnbågsgatan": "Regnbågsgatan",
-    "frihamnen": "Frihamnen"
+    "frihamnen": "Frihamnen",
+    "stenpiren": "Stenpiren",
+    "korsvagen": "Korsvägen"
 }
 
 function reset() {
@@ -131,14 +132,6 @@ function createComment(comment) {
 }
 
 function getDepartures() {
-    // let xhr = new XMLHttpRequest();
-    // xhr.open("GET", "/request?place="+place);
-    // xhr.onload = () => {
-    //     departures = xhr.response
-    //     addDeparture(xhr.response);
-    // }
-    // xhr.responseType = "json";
-    // xhr.send();
     fetch("/request?place="+place)
     .then(response => {
         if (response.ok) return response.json();
@@ -151,7 +144,7 @@ function getDepartures() {
             title: error,
             description: ""
         }]
-    }))
+    }));
 }
 
 function updateClock() {
