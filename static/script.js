@@ -75,7 +75,7 @@ function createBox(title, contents) {
         let row = createRow(
             d.line, d.dest, times[0], (times.length > 1) ? times[1]:"", 
             (times.length > 2) ? times[2]:"", "background-color: " + 
-            d.fgColor + "; color: " + d.bgColor + ";");
+            d.bgColor + "; color: " + d.fgColor + ";");
         box.appendChild(row);
     }
 

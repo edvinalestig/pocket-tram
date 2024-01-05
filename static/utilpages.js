@@ -26,7 +26,7 @@ function displayStops(data) {
         stopList.removeChild(stopList.lastChild);
     }
 
-    const stops = data.LocationList.StopLocation;
+    const stops = data.results;
     console.log(stops);
 
     if (stops.length == 0) {

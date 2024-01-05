@@ -1,5 +1,6 @@
 # coding: utf-8
 import base64
+from datetime import datetime, timezone
 import time
 import requests
 from requests_futures.sessions import FuturesSession
@@ -25,7 +26,7 @@ class Auth():
             "Content-Type": "application/x-www-form-urlencoded",
             "Authorization": "Basic " + self.__credentials
         }
-        url = f'https://api.vasttrafik.se/token?grant_type=client_credentials&scope={self.scope}'
+        url = f'https://ext-api.vasttrafik.se/token?grant_type=client_credentials&scope={self.scope}'
         response = requests.post(url, headers=header)
 
         response.raise_for_status()
@@ -78,112 +79,110 @@ class Auth():
 
 
 class Reseplaneraren():
-    def __init__(self, auth):
+    def __init__(self, auth: Auth):
         if type(auth) != Auth:
             raise TypeError("Expected Auth object")
         self.auth = auth
 
 
-    def trip(self, **kwargs):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/trip"
-        kwargs["format"] = "json"
+    # def trip(self, **kwargs):
+    #     header = {"Authorization": self.auth.token}
+    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/trip"
+    #     kwargs["format"] = "json"
 
-        response = requests.get(url, headers=header, params=kwargs)
-        return self.auth.checkResponse(response)
+    #     response = requests.get(url, headers=header, params=kwargs)
+    #     return self.auth.checkResponse(response)
 
 
 
-    def location_nearbyaddress(self, **kwargs):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.nearbyaddress"
-        kwargs["format"] = "json"
+    # def location_nearbyaddress(self, **kwargs):
+    #     header = {"Authorization": self.auth.token}
+    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.nearbyaddress"
+    #     kwargs["format"] = "json"
  
-        response = requests.get(url, headers=header, params=kwargs)
+    #     response = requests.get(url, headers=header, params=kwargs)
+    #     return self.auth.checkResponse(response)
+
+
+    # def location_nearbystops(self, **kwargs):
+    #     header = {"Authorization": self.auth.token}
+    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.nearbystops"
+    #     kwargs["format"] = "json"
+
+    #     response = requests.get(url, headers=header, params=kwargs)
+    #     return self.auth.checkResponse(response)
+
+
+    # def location_allstops(self, **kwargs):
+    #     header = {"Authorization": self.auth.token}
+    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.allstops"
+    #     kwargs["format"] = "json"
+
+    #     response = requests.get(url, headers=header, params=kwargs)
+    #     return self.auth.checkResponse(response)
+
+
+    def locations_by_text(self, name: str) -> dict:
+        header = {"Authorization": self.auth.token}
+        url = "https://ext-api.vasttrafik.se/pr/v4/locations/by-text"
+
+        response = requests.get(url, headers=header, params={"types":["stoparea"], "q": name})
         return self.auth.checkResponse(response)
 
 
-    def location_nearbystops(self, **kwargs):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.nearbystops"
-        kwargs["format"] = "json"
+    # def systeminfo(self, **kwargs):
+    #     header = {"Authorization": self.auth.token}
+    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/systeminfo"
+    #     kwargs["format"] = "json"
 
-        response = requests.get(url, headers=header, params=kwargs)
+    #     response = requests.get(url, headers=header, params=kwargs)
+    #     return self.auth.checkResponse(response)
+
+
+    # def livemap(self, **kwargs):
+    #     header = {"Authorization": self.auth.token}
+    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/livemap"
+    #     kwargs["format"] = "json"
+
+    #     response = requests.get(url, headers=header, params=kwargs)
+    #     return self.auth.checkResponse(response)
+
+
+    # def journeyDetail(self, ref) -> dict:
+    #     header = {"Authorization": self.auth.token}
+    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail"
+
+    #     response = requests.get(url, headers=header, params={"ref":ref})
+    #     return self.auth.checkResponse(response)
+
+
+    # def geometry(self, ref) -> dict:
+    #     header = {"Authorization": self.auth.token}
+    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/geometry"
+
+    #     response = requests.get(url, headers=header, params={"ref":ref})
+    #     return self.auth.checkResponse(response)
+
+
+    def departureBoard(self, gid: str, date_time: datetime) -> dict:
+        header = {"Authorization": self.auth.token}
+        url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/departures"
+        date_time = date_time.astimezone(timezone.utc).isoformat()
+
+        response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339})
         return self.auth.checkResponse(response)
 
 
-    def location_allstops(self, **kwargs):
+    def asyncDepartureBoards(self, request_list: list[dict]) -> list[dict]:
         header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.allstops"
-        kwargs["format"] = "json"
-
-        response = requests.get(url, headers=header, params=kwargs)
-        return self.auth.checkResponse(response)
-
-
-    def location_name(self, **kwargs):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.name"
-        kwargs["format"] = "json"
-
-        response = requests.get(url, headers=header, params=kwargs)
-        return self.auth.checkResponse(response)
-
-
-    def systeminfo(self, **kwargs):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/systeminfo"
-        kwargs["format"] = "json"
-
-        response = requests.get(url, headers=header, params=kwargs)
-        return self.auth.checkResponse(response)
-
-
-    def livemap(self, **kwargs):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/livemap"
-        kwargs["format"] = "json"
-
-        response = requests.get(url, headers=header, params=kwargs)
-        return self.auth.checkResponse(response)
-
-
-    def journeyDetail(self, ref):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail"
-
-        response = requests.get(url, headers=header, params={"ref":ref})
-        return self.auth.checkResponse(response)
-
-
-    def geometry(self, ref):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/geometry"
-
-        response = requests.get(url, headers=header, params={"ref":ref})
-        return self.auth.checkResponse(response)
-
-
-    def departureBoard(self, **kwargs):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/departureBoard"
-        kwargs["format"] = "json"
-
-        response = requests.get(url, headers=header, params=kwargs)
-        return self.auth.checkResponse(response)
-
-
-    def asyncDepartureBoards(self, request_list):
-        header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/departureBoard"
+        url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
 
         # Start a session for the async requests
         session = FuturesSession()
         reqs = []
         for req in request_list:
             # Send the requests
-            req["format"] = "json"
-            future = session.get(url, headers=header, params=req)
+            future = session.get(f"{url}/{req['gid']}/departures", headers=header, params=req["params"])
             reqs.append(future)
             time.sleep(0.02) # Without this everything breaks
 
@@ -193,18 +192,22 @@ class Reseplaneraren():
         return self.auth.checkResponses(responses)
 
 
-    def arrivalBoard(self, **kwargs):
+    def arrivalBoard(self, gid: str, date_time: datetime) -> dict:
         header = {"Authorization": self.auth.token}
-        url = "https://api.vasttrafik.se/bin/rest.exe/v2/arrivalBoard"
-        kwargs["format"] = "json"
+        url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/arrivals"
+        date_time = date_time.astimezone(timezone.utc).isoformat()
 
-        response = requests.get(url, headers=header, params=kwargs)
+        response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339})
         return self.auth.checkResponse(response)
+    
 
 
-    def request(self, url):
+    def request(self, ref: str, gid: str, ank: bool, geo: bool = False) -> list[dict]:
+        base_url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
+        url = f"{base_url}/{gid}/{'arrivals' if ank else 'departures'}/{ref}/details?includes=servicejourneycalls"
+        if geo: url += "&includes=servicejourneycoordinates"
         header = {"Authorization": self.auth.token}
-        response = requests.get(url + "&format=json", headers=header)
+        response = requests.get(url, headers=header)
         return self.auth.checkResponse(response)
 
 
@@ -213,7 +216,7 @@ class TrafficSituations():
         if type(auth) != Auth:
             raise TypeError("Expected Auth object")
         self.auth = auth
-        self.url = "https://api.vasttrafik.se/ts/v1/traffic-situations"
+        self.url = "https://ext-api.vasttrafik.se/ts/v1/traffic-situations"
 
     
     def __get(self, url):

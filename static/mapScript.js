@@ -2,10 +2,10 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiZWRkZTAwMDAiLCJhIjoiY2tqYmUyMDQ4MmgyNzJwbnZuY
 
 function addStop(map, stopInfo) {
     const popup = new mapboxgl.Popup()
-        .setText(stopInfo.name + ", läge " + stopInfo.track);
+        .setText(stopInfo.stopPoint.name + ", läge " + stopInfo.stopPoint.platform);
 
     const marker = new mapboxgl.Marker({"scale": 0.3})
-        .setLngLat([stopInfo.lon, stopInfo.lat])
+        .setLngLat([stopInfo.stopPoint.longitude, stopInfo.stopPoint.latitude])
         .setPopup(popup)
         .addTo(map);
 
@@ -13,100 +13,96 @@ function addStop(map, stopInfo) {
     return marker;
 }
 
-function addLine(map, color, points) {
+function addLine(map, color, points, i) {
     map.on("load", () => {
-        map.addSource("route", {
+        map.addSource("route" + i, {
             "type": "geojson",
             "data": {
                 "type": "Feature",
                 "properties": {},
                 "geometry": {
                     "type": "LineString",
-                    "coordinates": points.map(d => [d.lon, d.lat])
+                    "coordinates": points.map(d => [d.longitude, d.latitude])
                 }
             }
         });
         map.addLayer({
-            'id': 'routeOutline',
+            'id': 'routeOutline' + i,
             'type': 'line',
-            'source': 'route',
+            'source': 'route' + i,
             'layout': {
                 'line-join': 'round',
                 'line-cap': 'round'
             },
             'paint': {
-                'line-color': color.fgColor,
+                'line-color': color.foregroundColor,
                 'line-width': 1.5,
                 'line-gap-width': 5
             }
         })
         map.addLayer({
-            'id': 'route',
+            'id': 'route' + i,
             'type': 'line',
-            'source': 'route',
+            'source': 'route' + i,
             'layout': {
                 'line-join': 'round',
                 'line-cap': 'round'
             },
             'paint': {
-                'line-color': color.bgColor,
+                'line-color': color.backgroundColor,
                 'line-width': 5
             }
         });
     });
 }
 
-function getBounds(geometry) {
+function getBounds(arr) {
+    const geometry = arr.map(({serviceJourneyCoordinates}) => serviceJourneyCoordinates).flat();
     const w = geometry.reduce((prev, curr) => {
-        return prev < curr.lon*1 ? prev : curr.lon*1;
+        return prev < curr.longitude*1 ? prev : curr.longitude*1;
     }, Infinity);
     const n = geometry.reduce((prev, curr) => {
-        return prev > curr.lat*1 ? prev : curr.lat*1;
+        return prev > curr.latitude*1 ? prev : curr.latitude*1;
     }, -Infinity);
     const e = geometry.reduce((prev, curr) => {
-        return prev > curr.lon*1 ? prev : curr.lon*1;
+        return prev > curr.longitude*1 ? prev : curr.longitude*1;
     }, -Infinity);
     const s = geometry.reduce((prev, curr) => {
-        return prev < curr.lat*1 ? prev : curr.lat*1;
+        return prev < curr.latitude*1 ? prev : curr.latitude*1;
     }, Infinity);
     return [w,s,e,n];
 }
 
 let map;
 const args = new URLSearchParams(window.location.search);
-const depRef = atob(args.get("depRef"));
-const geoRef = atob(args.get("geoRef"));
 
-fetch("/mapdata?geoRef=" + geoRef + "&depRef=" + depRef)
+fetch("/mapdata?ref=" + args.get("ref") + "&gid=" + args.get("gid") + "&ad=" + args.get("ad"))
     .then(response => response.json())
-    .then(obj => {
-        const title = document.getElementById("title");
-        title.innerText = obj.name;
-        title.style = "color:" +  obj.color.fgColor + "; background-color:" + obj.color.bgColor;
-
-        firstStop = obj.stops[0];
-
+    .then(arr => {
+        const titleDiv = document.getElementById("title");
+        for (let sj of arr) {
+            const title = document.createElement("h2");
+            title.innerText = sj.line.name + " " + sj.direction;
+            title.style = "color:" +  sj.line.foregroundColor + 
+                "; background-color:" + sj.line.backgroundColor +
+                "; border: 1px solid " + sj.line.borderColor + ";";
+                titleDiv.appendChild(title);
+        }
+        firstStop = arr[0].serviceJourneyCoordinates[0];
         map = new mapboxgl.Map({
             container: 'map', // container ID
             style: 'mapbox://styles/mapbox/streets-v11', // style URL
-            center: [firstStop.lon, firstStop.lat], // starting position [lng, lat]
+            center: [firstStop.longitude, firstStop.latitude], // starting position [lng, lat]
             zoom: 12 // starting zoom
         });
 
-        console.log(obj);
-
-        addLine(map, obj.color, obj.geometry);
-
-        for (s of obj.stops) {
-            addStop(map, s);
+        console.log(arr);
+        for (let [i, obj] of arr.entries()) {
+            addLine(map, obj.line, obj.serviceJourneyCoordinates, i);
+    
+            for (s of obj.callsOnServiceJourney) {
+                addStop(map, s);
+            }
         }
-        map.fitBounds(getBounds(obj.geometry), {padding: 20});
+        map.fitBounds(getBounds(arr), {padding: 20});
     });
-
-
-
-
-// const l = document.createElement("a");
-// l.href = "/depInfo?ref=" + depRef;
-// l.innerText = "TEST";
-// document.body.appendChild(l);

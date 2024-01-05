@@ -2,18 +2,16 @@ from flask import Flask, request, send_file
 from vasttrafik import Auth, Reseplaneraren, TrafficSituations
 import json
 import dateutil.tz as tz
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import math
+from os import environ
 
 from utilityPages import UtilityPages
 import busPosition
 
 app = Flask(__name__)
 
-with open("credentials.txt", "r") as f:
-    creds = f.readlines()
-
-auth = Auth(creds[0].strip(), creds[1].strip(), "app")
+auth = Auth(environ["VTClient"], environ["VTSecret"], "app")
 rp = Reseplaneraren(auth)
 ts = TrafficSituations(auth)
 utilPages = UtilityPages(rp)
@@ -22,7 +20,7 @@ stopIDs = {
     "chalmers": 9021014001960000,
     "lgh": 9021014007171000,
     "markland": 9021014004760000,
-    "huset1": 9021014005470000,
+    # "huset1": 9021014005470000, -- existerar ej längre
     "huset2": 9021014005100000,
     "jt": 9021014003640000,
     "mariaplan": 9021014004730000,
@@ -36,16 +34,16 @@ stopIDs = {
     "brunnsparken": 9021014001760000,
     "centralstn": 9021014001950000,
     "kapellplatsen": 9021014003760000,
-    "tolvskilling": 9022014006790000,
-    "korsvägen": 9022014003980000,
-    "varbergsgatan": 9022014007270000,
-    "valand": 9022014007220000,
-    "regnbågsgatan": 9022014005465000,
-    "nordstan": 9022014004945000,
-    "frihamnen": 9022014002470000,
-    "frihamnsporten": 9022014002472000,
-    "vidblicksgatan": 9022014007400000,
-    "ålandsgatan": 9022014007440000
+    "tolvskilling": 9021014006790000,
+    "korsvägen": 9021014003980000,
+    "varbergsgatan": 9021014007270000,
+    "valand": 9021014007220000,
+    "regnbågsgatan": 9021014005465000,
+    "nordstan": 9021014004945000,
+    "frihamnen": 9021014002470000,
+    "frihamnsporten": 9021014002472000,
+    "vidblicksgatan": 9021014007400000,
+    "ålandsgatan": 9021014007440000
 }
 
 @app.route("/")
@@ -56,7 +54,7 @@ def index():
 # Usage: <url>/searchstop?stop=<name>
 @app.route("/searchstop")
 def seachStop():
-    return json.dumps(rp.location_name(input=request.args.get("stop")))
+    return json.dumps(rp.locations_by_text(request.args.get("stop")))
 
 @app.route("/utilities")
 def utilities():
@@ -117,19 +115,19 @@ def req():
 
     elif place == "huset":
         deps = getDepartures([
-            compileDict("huset1", "kungssten", countdown=False),
+            # compileDict("huset1", "kungssten", countdown=False),
             compileDict("huset2", "kungssten", countdown=False),
             compileDict("kungssten", "lindholmen", countdown=False)
         ])
 
         return json.dumps({
             "stops": {
-                "Rengatan": deps[0], 
-                "Nya Varvsallén": deps[1],
-                "Kungssten": deps[2]
+                # "Rengatan": deps[0], 
+                "Nya Varvsallén": deps[0],
+                "Kungssten": deps[1]
             },
             "ts": getTrafficSituation(place),
-            "comment": busPosition.getPosition(rp),
+            # "comment": busPosition.getPosition(rp),
             "time": timeNow
         })
     
@@ -383,14 +381,6 @@ def test():
 # first: Show combined row of all departures toward a stop (first 3)
 # dest: Destination showed for the combined row
 # offset: Time offset to not show unnecessary departures
-def getDeparture(fr, to, countdown=True, first=False, dest=" ", offset=0):
-    timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
-    date = timeNow.strftime("%Y%m%d")
-    time = timeNow.strftime("%H:%M")
-    return clean(rp.departureBoard(
-        id=stopIDs[fr], date=date, timeSpan=60,
-        time=time, maxDeparturesPerLine=3, 
-        direction=stopIDs[to], needJourneyDetail=0), countdown, first, dest)
 
 # Compiles a dict with all info for getDeparture() so it can be sent asynchronously
 def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0):
@@ -398,13 +388,13 @@ def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0):
     # timeNow = datetime(year=2023, month=6, day=28, hour=8, minute=0) + timedelta(minutes=offset)
     return {
         "request": {
-            "id": stopIDs[fr],
-            "date": timeNow.strftime("%Y%m%d"),
-            "timeSpan": 60,
-            "time": timeNow.strftime("%H:%M"),
-            "maxDeparturesPerLine": 3,
-            "direction": stopIDs[to],
-            "needJourneyDetail": 0
+            "gid": stopIDs[fr],
+            "params": {
+                "maxDeparturesPerLineAndDirection": 3,
+                "directionGid": stopIDs[to],
+                "startDateTime": timeNow.astimezone(timezone.utc).isoformat(),
+                "limit": 100
+            }
         },
         "countdown": countdown,
         "first": first,
@@ -424,36 +414,33 @@ def getDepartures(reqList):
 # obj: Object received from VT API
 # countdown, first, dest: same as getDeparture()
 def clean(obj, countdown, first, dest):
-    deps = obj.get("DepartureBoard").get("Departure")
+    deps = obj.get("results")
 
     if deps == None:
         # No departures found
         return []
-    
-    if type(deps) != list:
-        # Only one departure, put it in a list so
-        # the rest of the code doesn't break
-        deps = [deps]
 
     firstDeps = {
         "line": "🚋",
         "dest": dest,
         "time": [],
-        "fgColor": "white",
-        "bgColor": "blue"
+        "fgColor": "blue",
+        "bgColor": "white"
     }
 
     outArr = []
     for dep in deps:
-        line = dep.get("sname")
-        dest = cut(dep.get("direction"))
+        sj = dep.get("serviceJourney")
+        line = sj.get("line").get("shortName")
+        dest = cut(sj.get("direction"))
         ctdown = calculateCountdown(dep)
 
         # If the time left or the time+delay should be shown
         if countdown:
             time = ctdown
         else:
-            time = dep.get("time") + getDelay(dep)
+            t = datetime.fromisoformat("".join(dep.get("plannedTime").split(".0000000")))
+            time = t.strftime("%H:%M") + getDelay(dep)
 
         i = 0
         while i < len(outArr):
@@ -469,8 +456,8 @@ def clean(obj, countdown, first, dest):
                 "line": line,
                 "dest": dest,
                 "time": [time],
-                "fgColor": dep.get("bgColor"),
-                "bgColor": dep.get("fgColor")
+                "bgColor": sj.get("line").get("backgroundColor"),
+                "fgColor": sj.get("line").get("foregroundColor")
             }
             outArr.append(vitals)
         
@@ -497,19 +484,17 @@ def cut(s):
     return s
 
 def getDelay(dep):
-    if dep.get("cancelled"):
+    if dep.get("isCancelled"):
         return " X"
 
     # Check if real time info is available
-    tttime = dep.get("time")
-    rttime = dep.get("rtTime")
+    tttime = dep.get("plannedTime")
+    rttime = dep.get("estimatedTime")
     if rttime == None:
         return ""
-    ttdate = dep.get("date")
-    rtdate = dep.get("rtDate")
 
-    ttdt = convertToDatetime(tttime, ttdate)
-    rtdt = convertToDatetime(rttime, rtdate)
+    ttdt = datetime.fromisoformat("".join(tttime.split(".0000000")))
+    rtdt = datetime.fromisoformat("".join(rttime.split(".0000000")))
     delta = rtdt - ttdt
 
     # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
@@ -521,26 +506,24 @@ def getDelay(dep):
         return str(delay)
 
 def calculateCountdown(departure):
-    if departure.get("cancelled"):
+    if departure.get("isCancelled"):
         return "❌"
 
     # Check if real time info is available
-    dTime = departure.get("rtTime")
-    dDate = departure.get("rtDate")
+    dTime = departure.get("estimatedTime")
     if dTime == None:
         realtime = False
-        dTime = departure.get("time")
-        dDate = departure.get("date")
+        dTime = departure.get("plannedTime")
     else:
         realtime = True
 
-    depTime = convertToDatetime(dTime, dDate)
+    depTime = datetime.fromisoformat("".join(dTime.split(".0000000")))
     timeNow = datetime.now(tz.gettz("Europe/Stockholm"))
 
     # Time left:
-    countdown = depTime - timeNow.replace(tzinfo=None)
+    countdown = depTime - timeNow
     # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
-    countdown = countdown.days * 1440 + math.floor(countdown.seconds/60)
+    countdown = countdown.days * 1440 + math.ceil(countdown.seconds/60)
 
 
     if realtime:
@@ -550,11 +533,6 @@ def calculateCountdown(departure):
             return countdown
     else:
         return f'Ca {countdown}'
-
-def convertToDatetime(time, date):
-    t = time.split(":")
-    d = date.split("-")
-    return datetime(hour=int(t[0]), minute=int(t[1]), year=int(d[0]), month=int(d[1]), day=int(d[2]))
 
 def sortDepartures(arr):
     # Get the departures in the correct order in case the one behind is actually in front
@@ -601,11 +579,11 @@ def getTrafficSituation(place):
     placeStops = {
         "lgh": ["lgh", "svingeln", "chalmers"],
         "chalmers": ["chalmers", "lgh", "jt", "markland"],
-        "huset": ["huset1", "huset2", "jt"],
+        "huset": ["huset2", "jt"],
         "lindholmen": ["lindholmen", "lpiren", "svingeln", "stenpiren"],
         "markland": ["markland", "kungssten", "mariaplan", "chalmers"],
         "kungssten": ["kungssten", "lindholmen", "jt", "markland"],
-        "jt": ["jt", "kungssten", "huset1", "huset2", "chalmers", "lgh"],
+        "jt": ["jt", "kungssten", "huset2", "chalmers", "lgh"],
         "centrum": ["brunnsparken", "centralstn", "nordstan"],
         "vasaplatsen": ["vasaplatsen", "chalmers", "jt"],
         "kapellplatsen": ["kapellplatsen", "vasaplatsen", "lindholmen"],
