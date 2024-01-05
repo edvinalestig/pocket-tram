@@ -173,7 +173,7 @@ class Reseplaneraren():
         return self.auth.checkResponse(response)
 
 
-    def asyncDepartureBoards(self, request_list: list[dict]) -> list[dict]:
+    def asyncDepartureBoards(self, request_list: list) -> list:
         header = {"Authorization": self.auth.token}
         url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
 
@@ -199,10 +199,10 @@ class Reseplaneraren():
 
         response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339})
         return self.auth.checkResponse(response)
-    
 
 
-    def request(self, ref: str, gid: str, ank: bool, geo: bool = False) -> list[dict]:
+
+    def request(self, ref: str, gid: str, ank: bool, geo: bool = False) -> list:
         base_url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
         url = f"{base_url}/{gid}/{'arrivals' if ank else 'departures'}/{ref}/details?includes=servicejourneycalls"
         if geo: url += "&includes=servicejourneycoordinates"
