@@ -169,7 +169,7 @@ class Reseplaneraren():
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/departures"
         date_time = date_time.astimezone(timezone.utc).isoformat()
 
-        response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339})
+        response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339, "maxDeparturesPerLineAndDirection": 100})
         return self.auth.checkResponse(response)
 
 
