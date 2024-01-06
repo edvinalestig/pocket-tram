@@ -156,12 +156,23 @@ class Reseplaneraren():
     #     return self.auth.checkResponse(response)
 
 
-    # def geometry(self, ref) -> dict:
-    #     header = {"Authorization": self.auth.token}
-    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/geometry"
+    def positions(self, lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, 
+                  detailsReferences=[], lineDesignations=[], limit=100):
+        if not 1 <= limit <= 200: raise ValueError("Limit must be between 1 and 200")
 
-    #     response = requests.get(url, headers=header, params={"ref":ref})
-    #     return self.auth.checkResponse(response)
+        header = {"Authorization": self.auth.token}
+        url = "https://ext-api.vasttrafik.se/pr/v4/positions"
+        params = {
+            "lowerLeftLat": lowerLeftLat,
+            "lowerLeftLong": lowerLeftLon,
+            "upperRightLat": upperRightLat,
+            "upperRightLong": upperRightLon,
+            "limit": limit,
+            "detailsReferences": detailsReferences,
+            "lineDesignations": lineDesignations
+        }
+        response = requests.get(url, headers=header, params=params)
+        return self.auth.checkResponse(response)
 
 
     def departureBoard(self, gid: str, date_time: datetime) -> dict:

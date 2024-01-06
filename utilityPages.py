@@ -1,4 +1,3 @@
-import base64
 from flask import send_file
 import json
 from datetime import datetime
@@ -247,7 +246,7 @@ class UtilityPages:
         html += "\n</table>"
 
 
-        html += f'\n<a href="/map?ref={ref}&gid={gid}&ad={ad}">Map</a>'
+        html += f'\n<a href="/map?ref={ref}&gid={gid}&ad={ad}">Karta</a>'
         html += "\n</body>\n</html>"
         
         return html
@@ -299,17 +298,10 @@ class UtilityPages:
             html += "\n".join(stops)
         html += "\n</table>"
 
-        html += f'\n<a href="/map?ref={ref}&gid={gid}&ad={ad}">Map</a>'
+        html += f'\n<a href="/map?ref={ref}&gid={gid}&ad={ad}">Karta</a>'
         html += "\n</body>\n</html>"
         
         return html
-
-
-    def getGeometry(self, args):
-        ref = args.get("ref")
-        geo = self.resep.geometry(ref).get("Geometry").get("Points").get("Point")
-        return json.dumps(geo)
-
 
     def routemap(self, args):
         ref = args.get("ref")
@@ -317,7 +309,23 @@ class UtilityPages:
             return "<a href='/utilities'>Ingen referens</a>"
         gid = args.get("gid")
         ad  = args.get("ad")
-        return self.resep.request(ref, gid, ank=ad=="a", geo=True).get("serviceJourneys")
+        geo = self.resep.request(ref, gid, ank=ad=="a", geo=True).get("serviceJourneys")
+        positions = self.position(args)
+        return {"geo": geo, "positions": positions}
+    
+    def position(self, args):
+        # Covers the whole of VGR
+        lowerLeftLat = 57.270
+        lowerLeftLon = 11.146
+        upperRightLat = 59.378
+        upperRightLon = 14.496
+        ref = args.get("ref")
+        line = args.get("line")
+        if not ref and not line: return []
+        if ref:
+            return self.resep.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, [ref])
+        else:
+            return self.resep.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, lineDesignations=line)
 
 
 if __name__ == "__main__":

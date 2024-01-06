@@ -4,8 +4,32 @@ body {
 
 h2 {
     text-align: center;
+    margin: 0px;
+}
+
+#title {
+    margin-bottom: 5px;
 }
 
 #stop {
     cursor: pointer;
+}
+
+.position {
+    background-size: cover;
+    width: 25px;
+    height: 25px;
+    cursor: pointer;
+}
+
+.bus {
+    background-image: url('/static/busicon.png');
+}
+
+.tram {
+    background-image: url('/static/tramicon.png');
+}
+
+.boat {
+    background-image: url('/static/boaticon.png');
 }

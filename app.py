@@ -7,7 +7,6 @@ import math
 from os import environ
 
 from utilityPages import UtilityPages
-import busPosition
 
 app = Flask(__name__)
 
@@ -90,6 +89,10 @@ def routemap():
 @app.route("/mapdata")
 def routedata():
     return utilPages.routemap(request.args)
+
+@app.route("/position")
+def position():
+    return utilPages.position(request.args)
 
 @app.route("/request")
 def req():
@@ -370,10 +373,6 @@ def req():
         "test":"test2",
         "time": timeNow
     })
-
-@app.route("/test")
-def test():
-    return busPosition.getPosition(rp)
 
 # fr: From
 # to: To
