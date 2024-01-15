@@ -178,7 +178,9 @@ class Reseplaneraren():
     def departureBoard(self, gid: str, date_time: datetime) -> dict:
         header = {"Authorization": self.auth.token}
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/departures"
-        date_time = date_time.astimezone(timezone.utc).isoformat()
+        if date_time.tzinfo is None or date_time.tzinfo.utcoffset(date_time) is None:
+            date_time = date_time.astimezone(timezone.utc)
+        date_time = date_time.isoformat()
 
         response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339, "maxDeparturesPerLineAndDirection": 100})
         return self.auth.checkResponse(response)
@@ -206,7 +208,9 @@ class Reseplaneraren():
     def arrivalBoard(self, gid: str, date_time: datetime) -> dict:
         header = {"Authorization": self.auth.token}
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/arrivals"
-        date_time = date_time.astimezone(timezone.utc).isoformat()
+        if date_time.tzinfo is None or date_time.tzinfo.utcoffset(date_time) is None:
+            date_time = date_time.astimezone(timezone.utc)
+        date_time = date_time.isoformat()
 
         response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339})
         return self.auth.checkResponse(response)

@@ -1,6 +1,7 @@
 from flask import send_file
 import json
 from datetime import datetime
+from dateutil.tz import tz
 import math
 from vasttrafik import Reseplaneraren
 
@@ -66,7 +67,7 @@ class UtilityPages:
             stopID = args.get("stopId")
             stopName = args.get("stopName")
         
-        dateTime = datetime.now()
+        dateTime = datetime.now(tz.gettz("Europe/Stockholm"))
         if args.get("time"):
             hh,mm = map(int,args.get("time").split(":"))
             dateTime = dateTime.replace(hour=hh, minute=mm)
@@ -140,7 +141,7 @@ class UtilityPages:
             stopID = args.get("stopId")
             stopName = args.get("stopName")
 
-        dateTime = datetime.now()
+        dateTime = datetime.now(tz.gettz("Europe/Stockholm"))
         if args.get("time"):
             hh,mm = map(int,args.get("time").split(":"))
             dateTime = dateTime.replace(hour=hh, minute=mm)
