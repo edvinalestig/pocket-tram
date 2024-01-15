@@ -49,6 +49,10 @@ stopIDs = {
 def index():
     return send_file("static/index.html")
 
+@app.route("/favicon.ico")
+def favicon():
+    return send_file("static/favicon.ico")
+
 # "Hidden" page: displays response from VT when searching for a stop
 # Usage: <url>/searchstop?stop=<name>
 @app.route("/searchstop")
