@@ -77,7 +77,9 @@ class UtilityPages:
         if args.get("datetime"):
             dateTime = datetime.fromisoformat("".join(args["datetime"].replace(" ", "+").split(".0000000")))
 
-        departures = self.resep.departureBoard(stopID, dateTime)
+        offset = args.get("offset") if args.get("offset") else 0
+
+        departures = self.resep.departureBoard(stopID, dateTime, offset)
 
         with open("deps.json", "w") as f:
             f.write(json.dumps(departures))
@@ -127,7 +129,21 @@ class UtilityPages:
         
         html += "".join(depRows)
         html += "\n</table>"
-        # html += f"<br><a href='/findDepartures?stop={stopName}&time={departures[-1].get('time')}&date={departures[-1].get('date')}&moreInfo=on'>Fler avgångar</a>"
+
+        if departures["links"].get("previous"):
+            prev = departures["links"].get("previous")
+            params = map(lambda x: x.split("="), prev.split("?")[1].split("&"))
+            params = {k:v for k,v in params}
+            dtime, offset = params["startDateTime"], params.get("offset", 0)
+            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}&moreInfo=on'>Föregående sida</a>"
+
+        if departures["links"].get("next"):
+            nxt = departures["links"].get("next")
+            params = map(lambda x: x.split("="), nxt.split("?")[1].split("&"))
+            params = {k:v for k,v in params}
+            dtime, offset = params["startDateTime"], params.get("offset", 0)
+            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}&moreInfo=on'>Nästa sida</a>"
+
         html += "\n</body>\n</html>"
 
         return html
@@ -151,7 +167,8 @@ class UtilityPages:
         if args.get("datetime"):
             dateTime = datetime.fromisoformat("".join(args["datetime"].replace(" ", "+").split(".0000000")))
 
-        departures = self.resep.departureBoard(stopID, dateTime)
+        offset = args.get("offset") if args.get("offset") else 0
+        departures = self.resep.departureBoard(stopID, dateTime, offset)
 
         with open("deps.json", "w") as f:
             f.write(json.dumps(departures))
@@ -184,10 +201,17 @@ class UtilityPages:
         html += "\n</table>"
 
         if departures["links"].get("previous"):
-            pass
+            prev = departures["links"].get("previous")
+            params = map(lambda x: x.split("="), prev.split("?")[1].split("&"))
+            params = {k:v for k,v in params}
+            dtime, offset = params["startDateTime"], params.get("offset", 0)
+            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}'>Föregående sida</a>"
         if departures["links"].get("next"):
-            pass
-            # html += f"<br><a href='/findDepartures?stop={stopName}&time={departures[-1].get('plannedTime')}&date={departures[-1].get('date')}'>Fler avgångar</a>"
+            nxt = departures["links"].get("next")
+            params = map(lambda x: x.split("="), nxt.split("?")[1].split("&"))
+            params = {k:v for k,v in params}
+            dtime, offset = params["startDateTime"], params.get("offset", 0)
+            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}'>Nästa sida</a>"
         html += "\n</body>\n</html>"
 
         return html
@@ -321,7 +345,7 @@ class UtilityPages:
         upperRightLat = 59.378
         upperRightLon = 14.496
         ref = args.get("ref")
-        line = args.get("line")
+        line = args.getlist("line")
         if not ref and not line: return []
         if ref:
             return self.resep.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, [ref])

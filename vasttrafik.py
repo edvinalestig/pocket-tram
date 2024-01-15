@@ -175,14 +175,20 @@ class Reseplaneraren():
         return self.auth.checkResponse(response)
 
 
-    def departureBoard(self, gid: str, date_time: datetime) -> dict:
+    def departureBoard(self, gid: str, date_time: datetime, offset: int = 0) -> dict:
         header = {"Authorization": self.auth.token}
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/departures"
         if date_time.tzinfo is None or date_time.tzinfo.utcoffset(date_time) is None:
             date_time = date_time.astimezone(timezone.utc)
         date_time = date_time.isoformat()
 
-        response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339, "maxDeparturesPerLineAndDirection": 100})
+        response = requests.get(url, headers=header, params={
+            "startDateTime": date_time, 
+            "limit": 25,
+            "timeSpanInMinutes": 1339,
+            "maxDeparturesPerLineAndDirection": 100,
+            "offset": offset
+        })
         return self.auth.checkResponse(response)
 
 
@@ -205,14 +211,19 @@ class Reseplaneraren():
         return self.auth.checkResponses(responses)
 
 
-    def arrivalBoard(self, gid: str, date_time: datetime) -> dict:
+    def arrivalBoard(self, gid: str, date_time: datetime, offset: int = 0) -> dict:
         header = {"Authorization": self.auth.token}
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/arrivals"
         if date_time.tzinfo is None or date_time.tzinfo.utcoffset(date_time) is None:
             date_time = date_time.astimezone(timezone.utc)
         date_time = date_time.isoformat()
 
-        response = requests.get(url, headers=header, params={"startDateTime": date_time, "limit": 25, "timeSpanInMinutes": 1339})
+        response = requests.get(url, headers=header, params={
+            "startDateTime": date_time,
+            "limit": 25,
+            "timeSpanInMinutes": 1339,
+            "offset": offset
+        })
         return self.auth.checkResponse(response)
 
 
