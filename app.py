@@ -298,24 +298,20 @@ def req():
 
     elif place == "ica":
         deps = getDepartures([
-            compileDict("kapellplatsen", "valand"),
-            compileDict("valand", "varbergsgatan"),
-            compileDict("chalmers", "korsvägen"),
             compileDict("korsvägen", "varbergsgatan"),
             compileDict("varbergsgatan", "korsvägen"),
+            compileDict("korsvägen", "ålandsgatan"),
             compileDict("korsvägen", "chalmers"),
             compileDict("valand", "kapellplatsen")
         ])
 
         return json.dumps({
             "stops": {
-                "Kapellplatsen → Valand (4 min)": deps[0],
-                "Valand → ICA": deps[1],
-                "Chalmers → Korsvägen (4 min)": deps[2],
-                "Korsvägen → ICA": deps[3],
-                "ICA (7 min Korsvägen, 10 min Valand)": deps[4],
-                "Korsvägen → Chalmers": deps[5],
-                "Valand → Kapellplatsen": deps[6]
+                "Korsvägen → ICA": deps[0],
+                "ICA (7 min Korsvägen, 10 min Valand)": deps[1],
+                "Korsvägen → Ålandsgatan": deps[2],
+                "Korsvägen → Chalmers": deps[3],
+                "Valand → Kapellplatsen": deps[4]
             },
             "ts": getTrafficSituation("ica"),
             "time": timeNow
