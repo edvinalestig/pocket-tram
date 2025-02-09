@@ -43,7 +43,10 @@ stopIDs = {
     "frihamnsporten": 9021014002472000,
     "vidblicksgatan": 9021014007400000,
     "ålandsgatan": 9021014007440000,
-    "järnvågen": 9021014003645000
+    "järnvågen": 9021014003645000,
+    "bjurslättstorget": 9021014001475000,
+    "hjalmar": 9021014003180000,
+    "domkyrkan": 9021014002130000
 }
 
 @app.route("/")
@@ -107,6 +110,7 @@ def req():
     if place == "lgh":
         deps = getDepartures([
             compileDict("lgh", "chalmers", countdown=False, first=True, dest="Chalmers"),
+            compileDict("svingeln", "hjalmar", countdown=False, first=True, dest="Hjalmar", excludeLines=["6"]),
             compileDict("svingeln", "lindholmen", countdown=False, first=True, dest="Lindholmen"),
             compileDict("lgh", "centralstn")
         ])
@@ -114,8 +118,9 @@ def req():
         return json.dumps({
             "stops": {
                 "Mot Chalmers": deps[0],
-                "Mot Lindholmen": deps[1],
-                "Mot Centralstationen": deps[2]
+                "Mot Hjalmar Brantingsplatsen": deps[1],
+                "Mot Lindholmen": deps[2],
+                "Mot Centralstationen": deps[3]
             },
             "ts": getTrafficSituation(place),
             "time": timeNow
@@ -138,42 +143,68 @@ def req():
             # "comment": busPosition.getPosition(rp),
             "time": timeNow
         })
-    
-    # elif place == "markland":
-    #     deps = getDepartures([
-    #         compileDict("markland", "chalmers", first=True, dest="Chalmers"),
-    #         compileDict("markland", "kungssten"),
-    #         compileDict("markland", "mariaplan"),
-    #         compileDict("mariaplan", "kungssten", offset=5),
-    #         compileDict("markland", "tolvskilling")
-    #     ])
-
-    #     return json.dumps({
-    #         "stops": {
-    #             "Mot Chalmers": deps[0],
-    #             "Mot Kungssten": deps[1],
-    #             "Mot Mariaplan (restid 6 min)": deps[2],
-    #             "Från Mariaplan": deps[3],
-    #             "Mot Högsbohöjd": deps[4]
-    #         },
-    #         "ts": getTrafficSituation(place),
-    #         "time": timeNow
-    #     })
 
     elif place == "jt":
         deps = getDepartures([
             compileDict("jt", "chalmers"),
-            compileDict("jt", "vasaplatsen"),
+            compileDict("jt", "hjalmar"),
             compileDict("jt", "kberget"),
-            compileDict("jt", "lgh")
+            compileDict("jt", "lgh", excludeLines=["6"])
         ])
 
         return json.dumps({
             "stops": {
                 "Mot Chalmers": deps[0],
-                "Mot Mamma": deps[3],
-                "Mot Vasaplatsen": deps[1],
-                "Mot Pappa": deps[2]
+                "Mot Hjalmar Brantingsplatsen": deps[1],
+                "Mot Pappa": deps[2],
+                "Mot Mamma": deps[3]
+            },
+            "ts": getTrafficSituation(place),
+            "time": timeNow
+        })
+
+    elif place == "domkyrkan":
+        deps = getDepartures([
+            compileDict("domkyrkan", "bjurslättstorget"),
+            compileDict("domkyrkan", "kapellplatsen")
+        ])
+
+        return json.dumps({
+            "stops": {
+                "Mot Bjurslätts torg": deps[0],
+                "Mot Kapellplatsen": deps[1]
+            },
+            "ts": getTrafficSituation(place),
+            "time": timeNow
+        })
+
+    elif place == "bjurslatt":
+        deps = getDepartures([
+            compileDict("bjurslättstorget", "hjalmar", first=True, dest="Hjalmar Brantingsplatsen", excludeLines=["31"]),
+            compileDict("bjurslättstorget", "lindholmen")
+        ])
+
+        return json.dumps({
+            "stops": {
+                "Mot Hjalmar Brantingsplatsen": deps[0],
+                "Mot Lindholmen": deps[1]
+            },
+            "ts": getTrafficSituation(place),
+            "time": timeNow
+        })
+
+    elif place == "hjalmar":
+        deps = getDepartures([
+            compileDict("hjalmar", "bjurslättstorget"),
+            compileDict("hjalmar", "chalmers", excludeLines=["6"]),
+            compileDict("hjalmar", "svingeln", first=True, dest="Svingeln")
+        ])
+
+        return json.dumps({
+            "stops": {
+                "Mot Bjurslätts torg": deps[0],
+                "Mot Chalmers": deps[1],
+                "Mot Svingeln": deps[2],
             },
             "ts": getTrafficSituation(place),
             "time": timeNow
@@ -181,26 +212,18 @@ def req():
 
     elif place == "chalmers":
         deps = getDepartures([
+            compileDict("chalmers", "domkyrkan", excludeLines=["6"]),
+            compileDict("chalmers", "brunnsparken", first=True, dest="Brunnsparken", excludeLines=["6"]),
             compileDict("chalmers", "lgh", first=True, dest="Ullevi Norra"),
-            compileDict("chalmers", "jt"),
-            compileDict("jt", "kberget", offset=9),
-            compileDict("chalmers", "markland", first=True, dest="Marklandsgatan"),
-            compileDict("markland", "kungssten", offset=9),
-            compileDict("chalmers", "vasaplatsen", first=True, dest="Vasaplatsen"),
-            compileDict("vasaplatsen", "jt", offset=4),
             compileDict("chalmers", "lindholmen")
         ])
 
         return json.dumps({
             "stops": {
-                "Mot Lindholmen": deps[7],
-                "Mot Ullevi Norra": deps[0],
-                "Mot Järntorget (restid 10 min)": deps[1],
-                "Från Järntorget": deps[2],
-                "Mot Marklandsgatan (restid 10 min)": deps[3],
-                "Från Marklandsgatan": deps[4],
-                "Mot Vasaplatsen (restid 5 min)": deps[5],
-                "Från Vasaplatsen": deps[6]
+                "Mot Domkyrkan": deps[0],
+                "Mot Brunnsparken": deps[1],
+                "Mot Ullevi Norra": deps[2],
+                "Mot Lindholmen": deps[3],
             },
             "ts": getTrafficSituation(place),
             "time": timeNow
@@ -208,18 +231,16 @@ def req():
 
     elif place == "lindholmen":
         deps = getDepartures([
+            compileDict("lindholmen", "bjurslättstorget"),
             compileDict("lindholmen", "svingeln", first=True, dest="Svingeln"),
-            compileDict("lindholmen", "kungssten"),
             compileDict("lpiren", "stenpiren"),
-            compileDict("lindholmen", "kapellplatsen")
         ])
 
         return json.dumps({
             "stops": {
-                "Mot Kapellplatsen": deps[3],
+                "Mot Bjurslätts torg": deps[0],
+                "Mot Svingeln": deps[1],
                 "Båt": deps[2],
-                "Mot Svingeln": deps[0],
-                "Mot Kungssten": deps[1]
             },
             "ts": getTrafficSituation(place),
             "time": timeNow
@@ -242,64 +263,81 @@ def req():
     #         "time": timeNow
     #     })
         
-    elif place == "centrum":
+    elif place == "brunnsparken":
         deps = getDepartures([
-            compileDict("brunnsparken", "kapellplatsen"),
-            compileDict("centralstn", "lgh", first=True, dest="Ullevi Norra"),
-            compileDict("centralstn", "chalmers"),
-            # compileDict("nordstan", "lindholmen", first=True, dest="Lindholmen"),
-            compileDict("nordstan", "svingeln", first=True, dest="Svingeln")
+            compileDict("brunnsparken", "chalmers", excludeLines=["6"]),
+            compileDict("brunnsparken", "bjurslättstorget"),
+            compileDict("brunnsparken", "hjalmar", first=True, dest="Hjalmar Brantingsplatsen")
         ])
 
         return json.dumps({
             "stops": {
-                "Brunnsparken → Kapellplatsen": deps[0],
-                "Centralen → Ullevi Norra": deps[1],
-                "Centralen → Chalmers": deps[2],
-                "Nordstan → Svingeln": deps[3]
-                # "Nordstan → Lindholmen": deps[3]
+                "Mot Chalmers": deps[0],
+                "Mot Bjurslätts torg": deps[1],
+                "Mot Hjalmar Brantingsplatsen": deps[2]
             },
             "ts": getTrafficSituation("centrum"),
             "time": timeNow
         })
+        
+    # elif place == "centrum":
+    #     deps = getDepartures([
+    #         compileDict("brunnsparken", "kapellplatsen"),
+    #         compileDict("centralstn", "lgh", first=True, dest="Ullevi Norra"),
+    #         compileDict("centralstn", "chalmers"),
+    #         # compileDict("nordstan", "lindholmen", first=True, dest="Lindholmen"),
+    #         compileDict("nordstan", "svingeln", first=True, dest="Svingeln")
+    #     ])
 
-    elif place == "vasaplatsen":
-        deps = getDepartures([
-            compileDict("vasaplatsen", "jt"),
-            compileDict("jt", "kberget", offset=5),
-            compileDict("vasaplatsen", "kapellplatsen", first=True, dest="Kapellplatsen"),
-            compileDict("vasaplatsen", "lgh")
-        ])
+    #     return json.dumps({
+    #         "stops": {
+    #             "Brunnsparken → Kapellplatsen": deps[0],
+    #             "Centralen → Ullevi Norra": deps[1],
+    #             "Centralen → Chalmers": deps[2],
+    #             "Nordstan → Svingeln": deps[3]
+    #             # "Nordstan → Lindholmen": deps[3]
+    #         },
+    #         "ts": getTrafficSituation("centrum"),
+    #         "time": timeNow
+    #     })
 
-        return json.dumps({
-            "stops": {
-                "Mot Järntorget (restid 6/10 min)": deps[0],
-                "Från Järntorget": deps[1],
-                "Mot Kapellplatsen": deps[2],
-                "Mot Ullevi Norra": deps[3]
-            },
-            "ts": getTrafficSituation("vasaplatsen"),
-            "time": timeNow
-        })
+    # elif place == "vasaplatsen":
+    #     deps = getDepartures([
+    #         compileDict("vasaplatsen", "jt"),
+    #         compileDict("jt", "kberget", offset=5),
+    #         compileDict("vasaplatsen", "kapellplatsen", first=True, dest="Kapellplatsen"),
+    #         compileDict("vasaplatsen", "lgh")
+    #     ])
 
-    elif place == "kapellplatsen":
-        deps = getDepartures([
-            compileDict("kapellplatsen", "lindholmen"),
-            compileDict("kapellplatsen", "brunnsparken", first=True, dest="Brunnsparken"),
-            compileDict("ålandsgatan", "stenpiren"),
-            compileDict("stenpiren", "lpiren", offset=8)
-        ])
+    #     return json.dumps({
+    #         "stops": {
+    #             "Mot Järntorget (restid 6/10 min)": deps[0],
+    #             "Från Järntorget": deps[1],
+    #             "Mot Kapellplatsen": deps[2],
+    #             "Mot Ullevi Norra": deps[3]
+    #         },
+    #         "ts": getTrafficSituation("vasaplatsen"),
+    #         "time": timeNow
+    #     })
 
-        return json.dumps({
-            "stops": {
-                "Mot Lindholmen": deps[0],
-                "Mot Brunnsparken": deps[1],
-                "Ålandsg. → Stenpiren (10 min)": deps[2],
-                "Stenpiren → Lindholmen": deps[3]
-            },
-            "ts": getTrafficSituation("kapellplatsen"),
-            "time": timeNow
-        })
+    # elif place == "kapellplatsen":
+    #     deps = getDepartures([
+    #         compileDict("kapellplatsen", "lindholmen"),
+    #         compileDict("kapellplatsen", "brunnsparken", first=True, dest="Brunnsparken"),
+    #         compileDict("ålandsgatan", "stenpiren"),
+    #         compileDict("stenpiren", "lpiren", offset=8)
+    #     ])
+
+    #     return json.dumps({
+    #         "stops": {
+    #             "Mot Lindholmen": deps[0],
+    #             "Mot Brunnsparken": deps[1],
+    #             "Ålandsg. → Stenpiren (10 min)": deps[2],
+    #             "Stenpiren → Lindholmen": deps[3]
+    #         },
+    #         "ts": getTrafficSituation("kapellplatsen"),
+    #         "time": timeNow
+    #     })
 
     # elif place == "ica":
     #     deps = getDepartures([
@@ -337,41 +375,41 @@ def req():
     #         "time": timeNow
     #     })
 
-    elif place == "stenpiren":
-        deps = getDepartures([
-            compileDict("stenpiren", "svingeln"),
-            compileDict("stenpiren", "lpiren"),
-            compileDict("stenpiren", "kapellplatsen")
-        ])
+    # elif place == "stenpiren":
+    #     deps = getDepartures([
+    #         compileDict("stenpiren", "svingeln"),
+    #         compileDict("stenpiren", "lpiren"),
+    #         compileDict("stenpiren", "kapellplatsen")
+    #     ])
 
-        return json.dumps({
-            "stops": {
-                "Mot Svingeln": deps[0],
-                "Mot Lindholmen": deps[1],
-                "Mot Kapellplatsen": deps[2]
-            },
-            "ts": getTrafficSituation("stenpiren"),
-            "time": timeNow
-        })
+    #     return json.dumps({
+    #         "stops": {
+    #             "Mot Svingeln": deps[0],
+    #             "Mot Lindholmen": deps[1],
+    #             "Mot Kapellplatsen": deps[2]
+    #         },
+    #         "ts": getTrafficSituation("stenpiren"),
+    #         "time": timeNow
+    #     })
 
-    elif place == "korsvagen":
-        deps = getDepartures([
-            compileDict("korsvägen", "lgh", first=True, dest="Ullevi Norra"),
-            compileDict("korsvägen", "chalmers", first=True, dest="Chalmers"),
-            compileDict("korsvägen", "ålandsgatan"),
-            compileDict("korsvägen", "varbergsgatan")
-        ])
+    # elif place == "korsvagen":
+    #     deps = getDepartures([
+    #         compileDict("korsvägen", "lgh", first=True, dest="Ullevi Norra"),
+    #         compileDict("korsvägen", "chalmers", first=True, dest="Chalmers"),
+    #         compileDict("korsvägen", "ålandsgatan"),
+    #         compileDict("korsvägen", "varbergsgatan")
+    #     ])
 
-        return json.dumps({
-            "stops": {
-                "Mot Ullevi Norra": deps[0],
-                "Mot Ålandsgatan": deps[2],
-                "Mot Chalmers": deps[1],
-                "Mot Varbergsgatan": deps[3]
-            },
-            "ts": getTrafficSituation("korsvägen"),
-            "time": timeNow
-        })
+    #     return json.dumps({
+    #         "stops": {
+    #             "Mot Ullevi Norra": deps[0],
+    #             "Mot Ålandsgatan": deps[2],
+    #             "Mot Chalmers": deps[1],
+    #             "Mot Varbergsgatan": deps[3]
+    #         },
+    #         "ts": getTrafficSituation("korsvägen"),
+    #         "time": timeNow
+    #     })
 
 
     return json.dumps({
@@ -387,7 +425,7 @@ def req():
 # offset: Time offset to not show unnecessary departures
 
 # Compiles a dict with all info for getDeparture() so it can be sent asynchronously
-def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0):
+def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0, excludeLines=[]):
     timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
     # timeNow = datetime(year=2023, month=6, day=28, hour=8, minute=0) + timedelta(minutes=offset)
     return {
@@ -402,7 +440,8 @@ def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0):
         },
         "countdown": countdown,
         "first": first,
-        "dest": dest
+        "dest": dest,
+        "exclude": excludeLines
     }
 
 # Takes a list of compiled dicts and returns a list of cleaned results
@@ -412,12 +451,12 @@ def getDepartures(reqList):
     responses = rp.asyncDepartureBoards(reqs)
     returnList = []
     for i, resp in enumerate(responses):
-        returnList.append(clean(resp, reqList[i]["countdown"], reqList[i]["first"], reqList[i]["dest"]))
+        returnList.append(clean(resp, reqList[i]["countdown"], reqList[i]["first"], reqList[i]["dest"], reqList[i]["exclude"]))
     return returnList
 
 # obj: Object received from VT API
 # countdown, first, dest: same as getDeparture()
-def clean(obj, countdown, first, dest):
+def clean(obj, countdown, first, dest, exclude):
     deps = obj.get("results")
 
     if deps == None:
@@ -436,6 +475,8 @@ def clean(obj, countdown, first, dest):
     for dep in deps:
         sj = dep.get("serviceJourney")
         line = sj.get("line").get("shortName")
+        if line in exclude: continue
+
         dest = cut(sj.get("direction"))
         ctdown = calculateCountdown(dep)
 
@@ -581,21 +622,25 @@ def prioTimes(t):
 def getTrafficSituation(place):
     # Stops to check for each place
     placeStops = {
-        "lgh": ["lgh", "svingeln", "chalmers"],
-        "chalmers": ["chalmers", "lgh", "jt", "markland"],
+        "lgh": ["lgh", "svingeln", "chalmers", "hjalmar"],
+        "chalmers": ["chalmers", "lgh", "domkyrkan"],
         "huset": ["huset2", "jt"],
-        "lindholmen": ["lindholmen", "lpiren", "svingeln", "stenpiren"],
-        "markland": ["markland", "kungssten", "mariaplan", "chalmers"],
-        "kungssten": ["kungssten", "lindholmen", "jt", "markland"],
-        "jt": ["jt", "kungssten", "huset2", "chalmers", "lgh"],
+        "lindholmen": ["lindholmen", "lpiren", "svingeln", "stenpiren", "bjurslättstorget"],
+        # "markland": ["markland", "kungssten", "mariaplan", "chalmers"],
+        # "kungssten": ["kungssten", "lindholmen", "jt", "markland"],
+        "jt": ["jt", "kungssten", "huset2", "chalmers", "lgh", "hjalmar"],
         "centrum": ["brunnsparken", "centralstn", "nordstan"],
-        "vasaplatsen": ["vasaplatsen", "chalmers", "jt"],
-        "kapellplatsen": ["kapellplatsen", "vasaplatsen", "lindholmen"],
-        "ica": ["kapellplatsen", "chalmers", "valand", "korsvägen", "varbergsgatan"],
-        "regnbågsgatan": ["regnbågsgatan", "brunnsparken", "kapellplatsen"],
-        "frihamnen": ["frihamnen", "frihamnsporten"],
-        "stenpiren": ["stenpiren", "lpiren", "kapellplatsen"],
-        "korsvägen": ["korsvägen", "chalmers", "ålandsgatan", "varbergsgatan"]
+        "domkyrkan": ["brunnsparken", "domkyrkan", "chalmers", "hjalmar", "bjurslättstorget"],
+        "brunnsparken": ["brunnsparken", "domkyrkan", "chalmers", "hjalmar", "bjurslättstorget"],
+        "bjurslatt": ["brunnsparken", "domkyrkan", "chalmers", "hjalmar", "bjurslättstorget"],
+        "hjalmar": ["brunnsparken", "domkyrkan", "chalmers", "hjalmar", "bjurslättstorget"],
+        # "vasaplatsen": ["vasaplatsen", "chalmers", "jt"],
+        # "kapellplatsen": ["kapellplatsen", "vasaplatsen", "lindholmen"],
+        # "ica": ["kapellplatsen", "chalmers", "valand", "korsvägen", "varbergsgatan"],
+        # "regnbågsgatan": ["regnbågsgatan", "brunnsparken", "kapellplatsen"],
+        # "frihamnen": ["frihamnen", "frihamnsporten"],
+        # "stenpiren": ["stenpiren", "lpiren", "kapellplatsen"],
+        # "korsvägen": ["korsvägen", "chalmers", "ålandsgatan", "varbergsgatan"]
     }
 
     traffic = [ts.stoparea(stopIDs[stop]) for stop in placeStops[place]]

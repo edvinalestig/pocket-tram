@@ -2,6 +2,7 @@ let place;
 let departures;
 let timeout;
 let updateTime;
+let startpage;
 const choicebox = document.getElementById("setup");
 const depbox = document.getElementById("departures");
 const utilLink = document.getElementById("utilityLink");
@@ -10,21 +11,26 @@ const timeSpan = document.getElementById("time");
 const places = {
     "chalmers": "Chalmers",
     "lgh": "Mamma",
-    "markland": "Marklandsgatan",
+    // "markland": "Marklandsgatan",
     "jt": "Järntorget",
     "huset": "Pappa",
     "lindholmen": "Lindholmen",
-    "kungssten": "Kungssten",
+    // "kungssten": "Kungssten",
     "centrum": "Centrum",
-    "vasaplatsen": "Vasaplatsen",
-    "kapellplatsen": "Kapellplatsen",
-    "ica": "ICA",
-    "frihamnen": "Frihamnen",
-    "stenpiren": "Stenpiren",
-    "korsvagen": "Korsvägen"
+    "bjurslatt": "Bjurslätts torg",
+    "hjalmar": "Hjalmar Brantingsplatsen",
+    "brunnsparken": "Brunnsparken",
+    "domkyrkan": "Domkyrkan"
+    // "vasaplatsen": "Vasaplatsen",
+    // "kapellplatsen": "Kapellplatsen",
+    // "ica": "ICA",
+    // "frihamnen": "Frihamnen",
+    // "stenpiren": "Stenpiren",
+    // "korsvagen": "Korsvägen"
 }
 
 function reset() {
+    startpage = true;
     clearTimeout(timeout);
     updateTime = null;
     killChildren(depbox);
@@ -34,6 +40,7 @@ function reset() {
 }
 
 function choose(p) {
+    startpage = false;
     place = p;
     title.innerHTML = places[place];
     choicebox.classList.add("hide");
@@ -48,6 +55,9 @@ function killChildren(element) {
 }
 
 function addDeparture(obj) {
+    clearTimeout(timeout);
+    if (startpage) return;
+
     killChildren(depbox);
     console.log(obj);
     updateTime = obj.time ? obj.time : null;
@@ -58,7 +68,6 @@ function addDeparture(obj) {
     for (let disr of obj.ts) {
         createDisrBox(disr);
     }
-    clearTimeout(timeout);
     timeout = setTimeout(getDepartures, 10000);
 }
 
