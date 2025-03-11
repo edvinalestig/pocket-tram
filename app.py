@@ -46,7 +46,8 @@ stopIDs = {
     "järnvågen": 9021014003645000,
     "bjurslättstorget": 9021014001475000,
     "hjalmar": 9021014003180000,
-    "domkyrkan": 9021014002130000
+    "domkyrkan": 9021014002130000,
+    "wieselgrensgatan": 9021014007420000
 }
 
 @app.route("/")
@@ -110,7 +111,7 @@ def req():
     if place == "lgh":
         deps = getDepartures([
             compileDict("lgh", "chalmers", countdown=False, first=True, dest="Chalmers"),
-            compileDict("svingeln", "hjalmar", countdown=False, first=True, dest="Hjalmar", excludeLines=["6"]),
+            compileDict("svingeln", "hjalmar", countdown=False, first=True, dest="Hjalmar Brantingspl.", excludeLines=["6"]),
             compileDict("svingeln", "lindholmen", countdown=False, first=True, dest="Lindholmen"),
             compileDict("lgh", "centralstn")
         ])
@@ -180,7 +181,7 @@ def req():
 
     elif place == "bjurslatt":
         deps = getDepartures([
-            compileDict("bjurslättstorget", "hjalmar", first=True, dest="Hjalmar Brantingsplatsen", excludeLines=["31"]),
+            compileDict("bjurslättstorget", "hjalmar", first=True, dest="Hjalmar Brantingspl.", excludeLines=["31"], excludeDestinations=["Kippholmen"]),
             compileDict("bjurslättstorget", "lindholmen")
         ])
 
@@ -195,14 +196,14 @@ def req():
 
     elif place == "hjalmar":
         deps = getDepartures([
-            compileDict("hjalmar", "bjurslättstorget"),
+            compileDict("hjalmar", "wieselgrensgatan", first=True, dest="Wieselgrensgatan", excludeLines=["31"]),
             compileDict("hjalmar", "chalmers", excludeLines=["6"]),
             compileDict("hjalmar", "svingeln", first=True, dest="Svingeln")
         ])
 
         return json.dumps({
             "stops": {
-                "Mot Bjurslätts torg": deps[0],
+                "Mot Wieselgrensgatan": deps[0],
                 "Mot Chalmers": deps[1],
                 "Mot Svingeln": deps[2],
             },
@@ -267,7 +268,7 @@ def req():
         deps = getDepartures([
             compileDict("brunnsparken", "chalmers", excludeLines=["6"]),
             compileDict("brunnsparken", "bjurslättstorget"),
-            compileDict("brunnsparken", "hjalmar", first=True, dest="Hjalmar Brantingsplatsen")
+            compileDict("brunnsparken", "hjalmar", first=True, dest="Hjalmar Brantingspl.")
         ])
 
         return json.dumps({
@@ -425,7 +426,7 @@ def req():
 # offset: Time offset to not show unnecessary departures
 
 # Compiles a dict with all info for getDeparture() so it can be sent asynchronously
-def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0, excludeLines=[]):
+def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0, excludeLines=[], excludeDestinations=[]):
     timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
     # timeNow = datetime(year=2023, month=6, day=28, hour=8, minute=0) + timedelta(minutes=offset)
     return {
@@ -441,7 +442,8 @@ def compileDict(fr, to, countdown=True, first=False, dest=" ", offset=0, exclude
         "countdown": countdown,
         "first": first,
         "dest": dest,
-        "exclude": excludeLines
+        "excludeLines": excludeLines,
+        "excludeDestinations": excludeDestinations
     }
 
 # Takes a list of compiled dicts and returns a list of cleaned results
@@ -451,12 +453,12 @@ def getDepartures(reqList):
     responses = rp.asyncDepartureBoards(reqs)
     returnList = []
     for i, resp in enumerate(responses):
-        returnList.append(clean(resp, reqList[i]["countdown"], reqList[i]["first"], reqList[i]["dest"], reqList[i]["exclude"]))
+        returnList.append(clean(resp, reqList[i]["countdown"], reqList[i]["first"], reqList[i]["dest"], reqList[i]["excludeLines"], reqList[i]["excludeDestinations"]))
     return returnList
 
 # obj: Object received from VT API
 # countdown, first, dest: same as getDeparture()
-def clean(obj, countdown, first, dest, exclude):
+def clean(obj, countdown, first, dest, excludeLines, excludeDestinations):
     deps = obj.get("results")
 
     if deps == None:
@@ -475,9 +477,11 @@ def clean(obj, countdown, first, dest, exclude):
     for dep in deps:
         sj = dep.get("serviceJourney")
         line = sj.get("line").get("shortName")
-        if line in exclude: continue
+        if line in excludeLines: continue
 
         dest = cut(sj.get("direction"))
+        if dest in excludeDestinations: continue
+
         ctdown = calculateCountdown(dep)
 
         # If the time left or the time+delay should be shown
@@ -522,10 +526,11 @@ def clean(obj, countdown, first, dest, exclude):
     return sortDepartures(outArr)
 
 # Filter unwanted stuff from destination strings
-def cut(s):
+def cut(s: str):
     s = s.split(" via ")[0]
     s = s.split(", Fri resa")[0]
     s = s.split(", Påstigning fram")[0]
+    s = s.replace("Brantingsplatsen", "Brantingspl.")
     return s
 
 def getDelay(dep):
