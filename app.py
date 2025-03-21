@@ -18,39 +18,41 @@ utilPages = UtilityPages(rp)
 
 # Stop IDs (GID)
 class S(Enum):
+    """Enum of stop GIDs"""
+
+    Bjurslättstorget        = 9021014001475000
+    Brunnsparken            = 9021014001760000
+    Centralstationen        = 9021014001950000
     Chalmers                = 9021014001960000
-    UlleviNorra             = 9021014007171000
-    Marklandsgatan          = 9021014004760000
-    NyaVarvetsTorg          = 9021014005105000
-    NyaVarvsallén           = 9021014005100000
+    Domkyrkan               = 9021014002130000
+    Frihamnen               = 9021014002470000
+    Frihamnsporten          = 9021014002472000
+    Grönsakstorget          = 9021014002850000
+    HjalmarBrantingsplatsen = 9021014003180000
     Järntorget              = 9021014003640000
-    Mariaplan               = 9021014004730000
+    Järnvågen               = 9021014003645000
+    Kapellplatsen           = 9021014003760000
+    Korsvägen               = 9021014003980000
     Kungssten               = 9021014004100000
-    Vasaplatsen             = 9021014007300000
     Käringberget            = 9021014004230000
     Lindholmen              = 9021014004490000
     Lindholmspiren          = 9021014004493000
-    Svingeln                = 9021014006480000
-    Stenpiren               = 9021014006242000
-    Brunnsparken            = 9021014001760000
-    Centralstationen        = 9021014001950000
-    Kapellplatsen           = 9021014003760000
-    Tolvskillingsgatan      = 9021014006790000
-    Korsvägen               = 9021014003980000
-    Varbergsgatan           = 9021014007270000
-    Valand                  = 9021014007220000
-    Regnbågsgatan           = 9021014005465000
+    Mariaplan               = 9021014004730000
+    Marklandsgatan          = 9021014004760000
     Nordstan                = 9021014004945000
-    Frihamnen               = 9021014002470000
-    Frihamnsporten          = 9021014002472000
+    NyaVarvetsTorg          = 9021014005105000
+    NyaVarvsallén           = 9021014005100000
+    Regnbågsgatan           = 9021014005465000
+    Stenpiren               = 9021014006242000
+    Svingeln                = 9021014006480000
+    Tolvskillingsgatan      = 9021014006790000
+    UlleviNorra             = 9021014007171000
+    Valand                  = 9021014007220000
+    Varbergsgatan           = 9021014007270000
+    Vasaplatsen             = 9021014007300000
     Vidblicksgatan          = 9021014007400000
-    Ålandsgatan             = 9021014007440000
-    Järnvågen               = 9021014003645000
-    Bjurslättstorget        = 9021014001475000
-    HjalmarBrantingsplatsen = 9021014003180000
-    Domkyrkan               = 9021014002130000
     Wieselgrensgatan        = 9021014007420000
-    Grönsakstorget          = 9021014002850000
+    Ålandsgatan             = 9021014007440000
 
 @app.route("/")
 def index():
@@ -269,17 +271,37 @@ def req():
         "time": timeNow
     })
 
-# fr: From
-# to: To
-# countdown: If time left (countdown) or the timetable time with offset should be displayed
-# first: Show combined row of all departures toward a stop (first 3)
-# dest: Destination showed for the combined row
-# offset: Time offset to not show unnecessary departures
-# excludeLines: Line numbers to exclude from the result
-# excludeDestinations: Line destinations to exclude from the result
 
-# Compiles a dict with all info for getDeparture() so it can be sent asynchronously
 def compileDict(fr: S, to: S, countdown=True, first=False, dest=None, offset=0, excludeLines=[], excludeDestinations=[]):
+    """Compiles a dict with all info for getDeparture() so it can be sent asynchronously
+    
+    Parameters
+    ----------
+    fr: Stop enum
+        From stop
+
+    to: Stop enum
+        To stop   
+
+    countdown: bool, optional
+        If time left (countdown) or the timetable time with offset should be displayed
+
+    first: bool, optional
+        Show combined row of all departures toward a stop (first 3)
+
+    dest: str, optional
+        Destination showed for the combined row
+
+    offset: int, optional
+        Time offset in minutes to not show unnecessary departures
+
+    excludeLines: list[str], optional
+        Line numbers to exclude from the result
+
+    excludeDestinations: list[str], optional
+        Line destinations to exclude from the result
+    """
+
     timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
     # timeNow = datetime(year=2023, month=6, day=28, hour=8, minute=0) + timedelta(minutes=offset)
     return {
@@ -332,7 +354,7 @@ def clean(obj, countdown, first, dest, excludeLines, excludeDestinations):
         line = sj.get("line").get("shortName")
         if line in excludeLines: continue
 
-        dest = cut(sj.get("direction"))
+        dest = sj.get("directionDetails").get("shortDirection").replace("Brantingsplatsen", "Brantingspl.")
         if dest in excludeDestinations: continue
 
         ctdown = calculateCountdown(dep)
@@ -377,14 +399,6 @@ def clean(obj, countdown, first, dest, excludeLines, excludeDestinations):
             outArr.append(sort)
 
     return sortDepartures(outArr)
-
-# Filter unwanted stuff from destination strings
-def cut(s: str):
-    s = s.split(" via ")[0]
-    s = s.split(", Fri resa")[0]
-    s = s.split(", Påstigning fram")[0]
-    s = s.replace("Brantingsplatsen", "Brantingspl.")
-    return s
 
 def getDelay(dep):
     if dep.get("isCancelled"):
