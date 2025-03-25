@@ -1,9 +1,11 @@
 # coding: utf-8
 import base64
 from datetime import datetime, timezone
-import time
 import requests
+from requests import Response
 from requests_futures.sessions import FuturesSession
+
+from PTClasses import StopReq
 
 class Auth():
     def __init__(self, key, secret, scope):
@@ -35,7 +37,7 @@ class Auth():
         self.token = "Bearer " + responseDict.get("access_token")
 
 
-    def checkResponse(self, response):
+    def checkResponse(self, response: Response):
         if response.status_code == 401:
             self.__renewToken()
 
@@ -53,9 +55,9 @@ class Auth():
             raise Exception()
 
 
-    def checkResponses(self, response_list):
-        if all([r.status_code == 200 for r in response_list]):
-            return [r.json() for r in response_list]
+    def checkResponses(self, response_list: list[tuple[StopReq,Response]]) -> list[tuple[StopReq,dict]]:
+        if all([r.status_code == 200 for (_,r) in response_list]):
+            return [(sr,r.json()) for (sr,r) in response_list]
         else:
             print("Renewing token..")
             self.__renewToken()
@@ -64,18 +66,16 @@ class Auth():
             # Retry!
             session = FuturesSession()
             reqs = []
-            for resp in response_list:
+            for (sr,resp) in response_list:
                 # Send the new requests
-                url = resp.url
-                reqs.append(session.get(url, headers=header))
-                time.sleep(0.01)
+                reqs.append((sr,session.get(resp.url, headers=header)))
 
             # Get the results
-            resps = [req.result() for req in reqs]
-            for res in resps:
+            resps = [(sr,req.result()) for (sr,req) in reqs]
+            for (_,res) in resps:
                 res.raise_for_status()
 
-            return [r.json() for r in resps]
+            return [(sr,r.json()) for (sr,r) in resps]
 
 
 class Reseplaneraren():
@@ -84,77 +84,12 @@ class Reseplaneraren():
             raise TypeError("Expected Auth object")
         self.auth = auth
 
-
-    # def trip(self, **kwargs):
-    #     header = {"Authorization": self.auth.token}
-    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/trip"
-    #     kwargs["format"] = "json"
-
-    #     response = requests.get(url, headers=header, params=kwargs)
-    #     return self.auth.checkResponse(response)
-
-
-
-    # def location_nearbyaddress(self, **kwargs):
-    #     header = {"Authorization": self.auth.token}
-    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.nearbyaddress"
-    #     kwargs["format"] = "json"
- 
-    #     response = requests.get(url, headers=header, params=kwargs)
-    #     return self.auth.checkResponse(response)
-
-
-    # def location_nearbystops(self, **kwargs):
-    #     header = {"Authorization": self.auth.token}
-    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.nearbystops"
-    #     kwargs["format"] = "json"
-
-    #     response = requests.get(url, headers=header, params=kwargs)
-    #     return self.auth.checkResponse(response)
-
-
-    # def location_allstops(self, **kwargs):
-    #     header = {"Authorization": self.auth.token}
-    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/location.allstops"
-    #     kwargs["format"] = "json"
-
-    #     response = requests.get(url, headers=header, params=kwargs)
-    #     return self.auth.checkResponse(response)
-
-
     def locations_by_text(self, name: str) -> dict:
         header = {"Authorization": self.auth.token}
         url = "https://ext-api.vasttrafik.se/pr/v4/locations/by-text"
 
         response = requests.get(url, headers=header, params={"types":["stoparea"], "q": name})
         return self.auth.checkResponse(response)
-
-
-    # def systeminfo(self, **kwargs):
-    #     header = {"Authorization": self.auth.token}
-    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/systeminfo"
-    #     kwargs["format"] = "json"
-
-    #     response = requests.get(url, headers=header, params=kwargs)
-    #     return self.auth.checkResponse(response)
-
-
-    # def livemap(self, **kwargs):
-    #     header = {"Authorization": self.auth.token}
-    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/livemap"
-    #     kwargs["format"] = "json"
-
-    #     response = requests.get(url, headers=header, params=kwargs)
-    #     return self.auth.checkResponse(response)
-
-
-    # def journeyDetail(self, ref) -> dict:
-    #     header = {"Authorization": self.auth.token}
-    #     url = "https://api.vasttrafik.se/bin/rest.exe/v2/journeyDetail"
-
-    #     response = requests.get(url, headers=header, params={"ref":ref})
-    #     return self.auth.checkResponse(response)
-
 
     def positions(self, lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, 
                   detailsReferences=[], lineDesignations=[], limit=100):
@@ -180,10 +115,9 @@ class Reseplaneraren():
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/departures"
         if date_time.tzinfo is None or date_time.tzinfo.utcoffset(date_time) is None:
             date_time = date_time.astimezone(timezone.utc)
-        date_time = date_time.isoformat()
 
         response = requests.get(url, headers=header, params={
-            "startDateTime": date_time, 
+            "startDateTime": date_time.isoformat(), 
             "limit": 25,
             "timeSpanInMinutes": 1339,
             "maxDeparturesPerLineAndDirection": 100,
@@ -192,7 +126,7 @@ class Reseplaneraren():
         return self.auth.checkResponse(response)
 
 
-    def asyncDepartureBoards(self, request_list: list) -> list:
+    def asyncDepartureBoards(self, request_list: list[StopReq]) -> list[tuple[StopReq,dict]]:
         header = {"Authorization": self.auth.token}
         url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
 
@@ -201,11 +135,10 @@ class Reseplaneraren():
         reqs = []
         for req in request_list:
             # Send the requests
-            future = session.get(f"{url}/{req['gid']}/departures", headers=header, params=req["params"])
-            reqs.append(future)
-            time.sleep(0.02) # Without this everything breaks
+            future = session.get(f"{url}/{req.stop.value}/departures", headers=header, params=req.getParams())
+            reqs.append((req,future))
 
-        responses = [req.result() for req in reqs]
+        responses = [(sr,req.result()) for (sr,req) in reqs]
 
         # Check for errors
         return self.auth.checkResponses(responses)
@@ -216,10 +149,9 @@ class Reseplaneraren():
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/arrivals"
         if date_time.tzinfo is None or date_time.tzinfo.utcoffset(date_time) is None:
             date_time = date_time.astimezone(timezone.utc)
-        date_time = date_time.isoformat()
 
         response = requests.get(url, headers=header, params={
-            "startDateTime": date_time,
+            "startDateTime": date_time.isoformat(),
             "limit": 25,
             "timeSpanInMinutes": 1339,
             "offset": offset
@@ -228,7 +160,7 @@ class Reseplaneraren():
 
 
 
-    def request(self, ref: str, gid: str, ank: bool, geo: bool = False) -> list:
+    def request(self, ref: str, gid: str, ank: bool, geo: bool = False):
         base_url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
         url = f"{base_url}/{gid}/{'arrivals' if ank else 'departures'}/{ref}/details?includes=servicejourneycalls"
         if geo: url += "&includes=servicejourneycoordinates"

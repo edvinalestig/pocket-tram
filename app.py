@@ -2,11 +2,11 @@ from flask import Flask, request, send_file
 from vasttrafik import Auth, Reseplaneraren, TrafficSituations
 import json
 import dateutil.tz as tz
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import math
 from os import environ
-from enum import Enum
 
+from PTClasses import Stop, StopReq
 from utilityPages import UtilityPages
 
 app = Flask(__name__)
@@ -15,44 +15,6 @@ auth = Auth(environ["VTClient"], environ["VTSecret"], "app")
 rp = Reseplaneraren(auth)
 ts = TrafficSituations(auth)
 utilPages = UtilityPages(rp)
-
-# Stop IDs (GID)
-class S(Enum):
-    """Enum of stop GIDs"""
-
-    Bjurslättstorget        = 9021014001475000
-    Brunnsparken            = 9021014001760000
-    Centralstationen        = 9021014001950000
-    Chalmers                = 9021014001960000
-    Domkyrkan               = 9021014002130000
-    Frihamnen               = 9021014002470000
-    Frihamnsporten          = 9021014002472000
-    Grönsakstorget          = 9021014002850000
-    HjalmarBrantingsplatsen = 9021014003180000
-    Järntorget              = 9021014003640000
-    Järnvågen               = 9021014003645000
-    Kapellplatsen           = 9021014003760000
-    Korsvägen               = 9021014003980000
-    Kungssten               = 9021014004100000
-    Käringberget            = 9021014004230000
-    Lindholmen              = 9021014004490000
-    Lindholmspiren          = 9021014004493000
-    Mariaplan               = 9021014004730000
-    Marklandsgatan          = 9021014004760000
-    Nordstan                = 9021014004945000
-    NyaVarvetsTorg          = 9021014005105000
-    NyaVarvsallén           = 9021014005100000
-    Regnbågsgatan           = 9021014005465000
-    Stenpiren               = 9021014006242000
-    Svingeln                = 9021014006480000
-    Tolvskillingsgatan      = 9021014006790000
-    UlleviNorra             = 9021014007171000
-    Valand                  = 9021014007220000
-    Varbergsgatan           = 9021014007270000
-    Vasaplatsen             = 9021014007300000
-    Vidblicksgatan          = 9021014007400000
-    Wieselgrensgatan        = 9021014007420000
-    Ålandsgatan             = 9021014007440000
 
 @app.route("/")
 def index():
@@ -66,7 +28,9 @@ def favicon():
 # Usage: <url>/searchstop?stop=<name>
 @app.route("/searchstop")
 def seachStop():
-    return json.dumps(rp.locations_by_text(request.args.get("stop")))
+    if (stop := request.args.get("stop")) is None:
+        return "Add ?stop=xxx to the url"
+    return json.dumps(rp.locations_by_text(stop))
 
 @app.route("/utilities")
 def utilities():
@@ -91,10 +55,6 @@ def depInfo():
 def simpleDepInfo():
     return utilPages.simpleDepInfo(request.args)
 
-@app.route("/getgeometry")
-def getgeometry():
-    return utilPages.getGeometry(request.args)
-
 @app.route("/map")
 def routemap():
     return send_file("static/map.html")
@@ -114,153 +74,117 @@ def req():
 
     if place == "lgh":
         deps = getDepartures([
-            compileDict(S.UlleviNorra, S.Chalmers, countdown=False, first=True),
-            compileDict(S.Svingeln, S.HjalmarBrantingsplatsen, countdown=False, first=True, dest="Hjalmar Brantingspl.", excludeLines=["6"]),
-            compileDict(S.Svingeln, S.Lindholmen, countdown=False, first=True),
-            compileDict(S.UlleviNorra, S.Centralstationen)
+            compileStopReq("Mot Chalmers", Stop.UlleviNorra, Stop.Chalmers, showCountdown=False, compileFirst=True),
+            compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Svingeln, Stop.HjalmarBrantingsplatsen, showCountdown=False, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["6"]),
+            compileStopReq("Mot Lindholmen", Stop.Svingeln, Stop.Lindholmen, showCountdown=False, compileFirst=True),
+            compileStopReq("Mot Centralstationen", Stop.UlleviNorra, Stop.Centralstationen)
         ])
 
         return json.dumps({
-            "stops": {
-                "Mot Chalmers": deps[0],
-                "Mot Hjalmar Brantingsplatsen": deps[1],
-                "Mot Lindholmen": deps[2],
-                "Mot Centralstationen": deps[3]
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation(place),
             "time": timeNow
         })
 
     elif place == "huset":
         deps = getDepartures([
-            compileDict(S.NyaVarvetsTorg, S.Järnvågen, countdown=False),
-            compileDict(S.NyaVarvsallén, S.Kungssten, countdown=False)
+            compileStopReq("Nya Varvets Torg", Stop.NyaVarvetsTorg, Stop.Järnvågen, showCountdown=False),
+            compileStopReq("Nya Varvsallén", Stop.NyaVarvsallén, Stop.Kungssten, showCountdown=False)
         ])
 
         return json.dumps({
-            "stops": {
-                "Nya Varvets Torg": deps[0],
-                "Nya Varvsallén": deps[1]
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation(place),
             "time": timeNow
         })
 
     elif place == "jt":
         deps = getDepartures([
-            compileDict(S.Järntorget, S.Chalmers),
-            compileDict(S.Järntorget, S.HjalmarBrantingsplatsen),
-            compileDict(S.Järntorget, S.Käringberget),
-            compileDict(S.Järntorget, S.UlleviNorra, excludeLines=["6"])
+            compileStopReq("Mot Chalmers", Stop.Järntorget, Stop.Chalmers),
+            compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Järntorget, Stop.HjalmarBrantingsplatsen),
+            compileStopReq("Mot Pappa", Stop.Järntorget, Stop.Käringberget),
+            compileStopReq("Mot Mamma", Stop.Järntorget, Stop.UlleviNorra, excludeLines=["6"])
         ])
 
         return json.dumps({
-            "stops": {
-                "Mot Chalmers": deps[0],
-                "Mot Hjalmar Brantingsplatsen": deps[1],
-                "Mot Pappa": deps[2],
-                "Mot Mamma": deps[3]
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation(place),
             "time": timeNow
         })
 
     elif place == "domkyrkan":
         deps = getDepartures([
-            compileDict(S.Domkyrkan, S.Bjurslättstorget),
-            compileDict(S.Domkyrkan, S.Kapellplatsen)
+            compileStopReq("Mot Bjurslätts torg", Stop.Domkyrkan, Stop.Bjurslättstorget),
+            compileStopReq("Mot Kapellplatsen", Stop.Domkyrkan, Stop.Kapellplatsen)
         ])
 
         return json.dumps({
-            "stops": {
-                "Mot Bjurslätts torg": deps[0],
-                "Mot Kapellplatsen": deps[1]
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation(place),
             "time": timeNow
         })
 
     elif place == "bjurslatt":
         deps = getDepartures([
-            compileDict(S.Bjurslättstorget, S.HjalmarBrantingsplatsen, first=True, dest="Hjalmar Brantingspl.", excludeLines=["31"], excludeDestinations=["Kippholmen"]),
-            compileDict(S.Bjurslättstorget, S.Lindholmen)
+            compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Bjurslättstorget, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["31"], excludeDestinations=["Kippholmen"]),
+            compileStopReq("Mot Lindholmen", Stop.Bjurslättstorget, Stop.Lindholmen)
         ])
 
         return json.dumps({
-            "stops": {
-                "Mot Hjalmar Brantingsplatsen": deps[0],
-                "Mot Lindholmen": deps[1]
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation(place),
             "time": timeNow
         })
 
     elif place == "hjalmar":
         deps = getDepartures([
-            compileDict(S.HjalmarBrantingsplatsen, S.Wieselgrensgatan, first=True, excludeLines=["31"]),
-            compileDict(S.HjalmarBrantingsplatsen, S.Chalmers, excludeLines=["6"]),
-            compileDict(S.HjalmarBrantingsplatsen, S.Svingeln, first=True)
+            compileStopReq("Mot Wieselgrensgatan", Stop.HjalmarBrantingsplatsen, Stop.Wieselgrensgatan, compileFirst=True, excludeLines=["31"]),
+            compileStopReq("Mot Chalmers", Stop.HjalmarBrantingsplatsen, Stop.Chalmers, excludeLines=["6"]),
+            compileStopReq("Mot Svingeln", Stop.HjalmarBrantingsplatsen, Stop.Svingeln, compileFirst=True, excludeLines=["6"])
         ])
 
         return json.dumps({
-            "stops": {
-                "Mot Wieselgrensgatan": deps[0],
-                "Mot Chalmers": deps[1],
-                "Mot Svingeln": deps[2],
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation(place),
             "time": timeNow
         })
 
     elif place == "chalmers":
         deps = getDepartures([
-            compileDict(S.Chalmers, S.Domkyrkan, excludeLines=["6"]),
-            compileDict(S.Chalmers, S.Brunnsparken, first=True, dest="Brunnsparken", excludeLines=["6"]),
-            compileDict(S.Chalmers, S.UlleviNorra, first=True, dest="Ullevi Norra"),
-            compileDict(S.Chalmers, S.Lindholmen)
+            compileStopReq("Mot Domkyrkan", Stop.Chalmers, Stop.Domkyrkan, excludeLines=["6"]),
+            compileStopReq("Mot Brunnsparken", Stop.Chalmers, Stop.Brunnsparken, compileFirst=True, dest="Brunnsparken", excludeLines=["6"]),
+            compileStopReq("Mot Ullevi Norra", Stop.Chalmers, Stop.UlleviNorra, compileFirst=True, dest="Ullevi Norra"),
+            compileStopReq("Mot Lindholmen", Stop.Chalmers, Stop.Lindholmen)
         ])
 
         return json.dumps({
-            "stops": {
-                "Mot Domkyrkan": deps[0],
-                "Mot Brunnsparken": deps[1],
-                "Mot Ullevi Norra": deps[2],
-                "Mot Lindholmen": deps[3],
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation(place),
             "time": timeNow
         })
 
     elif place == "lindholmen":
         deps = getDepartures([
-            compileDict(S.Lindholmen, S.Bjurslättstorget),
-            compileDict(S.Lindholmen, S.Svingeln, first=True),
-            compileDict(S.Lindholmspiren, S.Stenpiren),
+            compileStopReq("Mot Bjurslätts torg", Stop.Lindholmen, Stop.Bjurslättstorget),
+            compileStopReq("Mot Svingeln", Stop.Lindholmen, Stop.Svingeln, compileFirst=True),
+            compileStopReq("Båt", Stop.Lindholmspiren, Stop.Stenpiren),
         ])
 
         return json.dumps({
-            "stops": {
-                "Mot Bjurslätts torg": deps[0],
-                "Mot Svingeln": deps[1],
-                "Båt": deps[2],
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation(place),
             "time": timeNow
         })
         
     elif place == "brunnsparken":
         deps = getDepartures([
-            compileDict(S.Brunnsparken, S.Chalmers, excludeLines=["6"]),
-            compileDict(S.Brunnsparken, S.Bjurslättstorget),
-            compileDict(S.Brunnsparken, S.HjalmarBrantingsplatsen, first=True, dest="Hjalmar Brantingspl.")
+            compileStopReq("Mot Chalmers", Stop.Brunnsparken, Stop.Chalmers, excludeLines=["6"]),
+            compileStopReq("Mot Bjurslätts torg", Stop.Brunnsparken, Stop.Bjurslättstorget),
+            compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Brunnsparken, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.")
         ])
 
         return json.dumps({
-            "stops": {
-                "Mot Chalmers": deps[0],
-                "Mot Bjurslätts torg": deps[1],
-                "Mot Hjalmar Brantingsplatsen": deps[2]
-            },
+            "stops": {sr.title: dep for (sr,dep) in deps},
             "ts": getTrafficSituation("centrum"),
             "time": timeNow
         })
@@ -271,78 +195,35 @@ def req():
         "time": timeNow
     })
 
-
-def compileDict(fr: S, to: S, countdown=True, first=False, dest=None, offset=0, excludeLines=[], excludeDestinations=[]):
-    """Compiles a dict with all info for getDeparture() so it can be sent asynchronously
-    
-    Parameters
-    ----------
-    fr: Stop enum
-        From stop
-
-    to: Stop enum
-        To stop   
-
-    countdown: bool, optional
-        If time left (countdown) or the timetable time with offset should be displayed
-
-    first: bool, optional
-        Show combined row of all departures toward a stop (first 3)
-
-    dest: str, optional
-        Destination showed for the combined row
-
-    offset: int, optional
-        Time offset in minutes to not show unnecessary departures
-
-    excludeLines: list[str], optional
-        Line numbers to exclude from the result
-
-    excludeDestinations: list[str], optional
-        Line destinations to exclude from the result
-    """
-
+def compileStopReq(title: str,
+                   fr: Stop,
+                   to: Stop,
+                   showCountdown: bool = True,
+                   compileFirst: bool = False, 
+                   dest: str | None = None, 
+                   offset: int = 0, 
+                   excludeLines: list[str] = [], 
+                   excludeDestinations: list[str] = []
+                   ) -> StopReq:
     timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
-    # timeNow = datetime(year=2023, month=6, day=28, hour=8, minute=0) + timedelta(minutes=offset)
-    return {
-        "request": {
-            "gid": fr.value,
-            "params": {
-                "maxDeparturesPerLineAndDirection": 3,
-                "directionGid": to.value,
-                "startDateTime": timeNow.astimezone(timezone.utc).isoformat(),
-                "limit": 100
-            }
-        },
-        "countdown": countdown,
-        "first": first,
-        "dest": dest or to.name,
-        "excludeLines": excludeLines,
-        "excludeDestinations": excludeDestinations
-    }
+    return StopReq(title, showCountdown, compileFirst, dest or to.name, excludeLines, excludeDestinations, fr, to, timeNow) 
 
 # Takes a list of compiled dicts and returns a list of cleaned results
-# Does what getDeparture() does but with many at the same time
-def getDepartures(reqList):
-    reqs = [req["request"] for req in reqList]
-    responses = rp.asyncDepartureBoards(reqs)
-    returnList = []
-    for i, resp in enumerate(responses):
-        returnList.append(clean(resp, reqList[i]["countdown"], reqList[i]["first"], reqList[i]["dest"], reqList[i]["excludeLines"], reqList[i]["excludeDestinations"]))
-    return returnList
+def getDepartures(reqList: list[StopReq]) -> list[tuple[StopReq,list]]:
+    responses = rp.asyncDepartureBoards(reqList)
+    return [clean(*resp) for resp in responses]
 
 # obj: Object received from VT API
-# countdown, first, dest: same as getDeparture()
-def clean(obj, countdown, first, dest, excludeLines, excludeDestinations):
+def clean(sr: StopReq, obj: dict) -> tuple[StopReq, list]:
     deps = obj.get("results")
 
     if deps == None:
         # No departures found
-        return []
+        return (sr, [])
 
     firstDeps = {
         "line": "🚋",
-        "dest": dest,
+        "dest": sr.dest,
         "time": [],
         "fgColor": "blue",
         "bgColor": "white"
@@ -352,15 +233,15 @@ def clean(obj, countdown, first, dest, excludeLines, excludeDestinations):
     for dep in deps:
         sj = dep.get("serviceJourney")
         line = sj.get("line").get("shortName")
-        if line in excludeLines: continue
+        if line in sr.excludeLines: continue
 
         dest = sj.get("directionDetails").get("shortDirection").replace("Brantingsplatsen", "Brantingspl.")
-        if dest in excludeDestinations: continue
+        if dest in sr.excludeDestinations: continue
 
         ctdown = calculateCountdown(dep)
 
         # If the time left or the time+delay should be shown
-        if countdown:
+        if sr.showCountdown:
             time = ctdown
         else:
             t = datetime.fromisoformat("".join(dep.get("plannedTime").split(".0000000")))
@@ -390,7 +271,7 @@ def clean(obj, countdown, first, dest, excludeLines, excludeDestinations):
             # they aren't cancelled or not having realtime info.
             firstDeps["time"].append(ctdown)
 
-    if first:
+    if sr.compileFirst:
         # All departures toward a stop
         # Get only the first three after sorting
         if len(firstDeps["time"]) > 0:
@@ -398,14 +279,14 @@ def clean(obj, countdown, first, dest, excludeLines, excludeDestinations):
             sort["time"] = sort["time"][:3]
             outArr.append(sort)
 
-    return sortDepartures(outArr)
+    return (sr, sortDepartures(outArr))
 
-def getDelay(dep):
+def getDelay(dep: dict) -> str:
     if dep.get("isCancelled"):
         return " X"
 
     # Check if real time info is available
-    tttime = dep.get("plannedTime")
+    tttime = dep.get("plannedTime", "")
     rttime = dep.get("estimatedTime")
     if rttime == None:
         return ""
@@ -422,7 +303,7 @@ def getDelay(dep):
     else:
         return str(delay)
 
-def calculateCountdown(departure):
+def calculateCountdown(departure: dict) -> str | int:
     if departure.get("isCancelled"):
         return "❌"
 
@@ -430,7 +311,7 @@ def calculateCountdown(departure):
     dTime = departure.get("estimatedTime")
     if dTime == None:
         realtime = False
-        dTime = departure.get("plannedTime")
+        dTime = departure.get("plannedTime", "")
     else:
         realtime = True
 
@@ -457,14 +338,15 @@ def sortDepartures(arr):
         # Do not sort the list if there are strings in it (except 'Nu'), they  
         # might be "00:12+1" and "23:56-2" which would then be swapped.
         skip = False
-        for t in arr[i]["time"]:
+        for t in dep["time"]:
             if type(t) == str and t != "Nu":
                 skip = True
+                break
         if skip: 
             continue
 
         try:
-            arr[i]["time"] = sorted(arr[i]["time"], key=lambda t: prioTimes(t))
+            arr[i]["time"] = sorted(dep["time"], key=lambda t: prioTimes(t))
         except TypeError:
             # One departure was a string and it doesn't like mixing strings and numbers
             pass
@@ -474,36 +356,36 @@ def sortDepartures(arr):
     sortedByLine = sorted(sortedByDestination, key=lambda dep: prioritise(dep["line"]))
     return sortedByLine
 
-def prioritise(value):
+def prioritise(value: str) -> str:
     if value == "🚋":
         return "0"
 
     # 65 should become before 184 -> sort by 065 and 184 instead.
     return (3 - len(value)) * "0" + value
 
-def prioTimes(t):
+def prioTimes(t: int | str) -> int:
     if type(t) == int:
         return t
     if t == "Nu":
         return 0
-    if "Ca " in t:
-        return int(t.split("Ca ")[1])
+    if "Ca " in t: # type: ignore
+        return int(t.split("Ca ")[1]) # type: ignore
     return 99999999
 
 
-def getTrafficSituation(place):
+def getTrafficSituation(place: str):
     # Stops to check for each place
     placeStops = {
-        "lgh":          [S.UlleviNorra, S.Svingeln, S.Chalmers, S.HjalmarBrantingsplatsen],
-        "chalmers":     [S.Chalmers, S.UlleviNorra, S.Domkyrkan],
-        "huset":        [S.NyaVarvetsTorg, S.NyaVarvsallén, S.Järntorget],
-        "lindholmen":   [S.Lindholmen, S.Lindholmspiren, S.Svingeln, S.Stenpiren, S.Bjurslättstorget],
-        "jt":           [S.Järntorget, S.Kungssten, S.NyaVarvetsTorg, S.NyaVarvsallén, S.Chalmers, S.UlleviNorra, S.HjalmarBrantingsplatsen],
-        "centrum":      [S.Brunnsparken, S.Centralstationen, S.Nordstan],
-        "domkyrkan":    [S.Brunnsparken, S.Domkyrkan, S.Chalmers, S.HjalmarBrantingsplatsen, S.Bjurslättstorget],
-        "brunnsparken": [S.Brunnsparken, S.Domkyrkan, S.Chalmers, S.HjalmarBrantingsplatsen, S.Bjurslättstorget],
-        "bjurslatt":    [S.Brunnsparken, S.Domkyrkan, S.Chalmers, S.HjalmarBrantingsplatsen, S.Bjurslättstorget],
-        "hjalmar":      [S.Brunnsparken, S.Domkyrkan, S.Chalmers, S.HjalmarBrantingsplatsen, S.Bjurslättstorget, S.Svingeln]
+        "lgh":          [Stop.UlleviNorra, Stop.Svingeln, Stop.Chalmers, Stop.HjalmarBrantingsplatsen],
+        "chalmers":     [Stop.Chalmers, Stop.UlleviNorra, Stop.Domkyrkan],
+        "huset":        [Stop.NyaVarvetsTorg, Stop.NyaVarvsallén, Stop.Järntorget],
+        "lindholmen":   [Stop.Lindholmen, Stop.Lindholmspiren, Stop.Svingeln, Stop.Stenpiren, Stop.Bjurslättstorget],
+        "jt":           [Stop.Järntorget, Stop.Kungssten, Stop.NyaVarvetsTorg, Stop.NyaVarvsallén, Stop.Chalmers, Stop.UlleviNorra, Stop.HjalmarBrantingsplatsen],
+        "centrum":      [Stop.Brunnsparken, Stop.Centralstationen, Stop.Nordstan],
+        "domkyrkan":    [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget],
+        "brunnsparken": [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget],
+        "bjurslatt":    [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget],
+        "hjalmar":      [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget, Stop.Svingeln]
     }
 
     traffic = [ts.stoparea(stop.value) for stop in placeStops[place]]

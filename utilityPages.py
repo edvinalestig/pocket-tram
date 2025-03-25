@@ -60,7 +60,7 @@ class UtilityPages:
 
     def searchStop(self, args):
         if args.get("stop"):
-            stop = self.resep.locations_by_text(args.get("stop")).get("results")
+            stop = self.resep.locations_by_text(args.get("stop"))["results"]
             stopName = stop[0].get("name")
             stopID = stop[0].get("gid")
         else:
@@ -81,8 +81,8 @@ class UtilityPages:
 
         departures = self.resep.departureBoard(stopID, dateTime, offset)
 
-        with open("deps.json", "w") as f:
-            f.write(json.dumps(departures))
+        # with open("deps.json", "w") as f:
+        #     f.write(json.dumps(departures))
 
         if not departures.get("results"):
             return "<a href='/utilities'>Inga avgångar</a>"
@@ -150,28 +150,28 @@ class UtilityPages:
 
     def simpleSearchStop(self, args: dict) -> str:
         if args.get("stop"):
-            stop = self.resep.locations_by_text(args.get("stop")).get("results")
+            stop = self.resep.locations_by_text(args["stop"])["results"]
             stopName = stop[0].get("name")
             stopID = stop[0].get("gid")
         else:
-            stopID = args.get("stopId")
-            stopName = args.get("stopName")
+            stopID = args["stopId"]
+            stopName = args["stopName"]
 
         dateTime = datetime.now(tz.gettz("Europe/Stockholm"))
         if args.get("time"):
-            hh,mm = map(int,args.get("time").split(":"))
+            hh,mm = map(int,args["time"].split(":"))
             dateTime = dateTime.replace(hour=hh, minute=mm)
         if args.get("date"):
-            yy,mm,dd = map(int,args.get("date").split("-"))
+            yy,mm,dd = map(int,args["date"].split("-"))
             dateTime = dateTime.replace(year=yy, month=mm, day=dd)
         if args.get("datetime"):
             dateTime = datetime.fromisoformat("".join(args["datetime"].replace(" ", "+").split(".0000000")))
 
-        offset = args.get("offset") if args.get("offset") else 0
+        offset = args.get("offset", 0)
         departures = self.resep.departureBoard(stopID, dateTime, offset)
 
-        with open("deps.json", "w") as f:
-            f.write(json.dumps(departures))
+        # with open("deps.json", "w") as f:
+        #     f.write(json.dumps(departures))
 
         if not departures:
             return "<a href='/utilities'>Inga avgångar</a>"
@@ -236,8 +236,8 @@ class UtilityPages:
         if not dep:
             return "<a href='/utilities'>Ingen info<a>"
 
-        with open("dep.json", "w") as f:
-            f.write(json.dumps(dep))
+        # with open("dep.json", "w") as f:
+        #     f.write(json.dumps(dep))
 
         html = (
             '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n'
@@ -286,8 +286,8 @@ class UtilityPages:
         if not dep:
             return "<a href='/utilities'>Ingen info<a>"
 
-        with open("dep.json", "w") as f:
-            f.write(json.dumps(dep))
+        # with open("dep.json", "w") as f:
+        #     f.write(json.dumps(dep))
 
         html = (
             '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n'
