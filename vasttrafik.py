@@ -8,8 +8,12 @@ from requests_futures.sessions import FuturesSession
 from PTClasses import StopReq
 
 class Auth():
-    def __init__(self, key, secret, scope):
-        if key == None or secret == None or scope == None:
+    __credentials: str
+    scope: str
+    token: str
+
+    def __init__(self, key: str, secret: str, scope: str):
+        if key is None or secret is None or scope is None:
             raise TypeError("Usage: Auth(<key>, <secret>, <scope>)")
 
         if type(key) != str:
@@ -23,25 +27,25 @@ class Auth():
         self.__renewToken()
 
 
-    def __renewToken(self):
-        header = {
+    def __renewToken(self) -> None:
+        header: dict[str, str] = {
             "Content-Type": "application/x-www-form-urlencoded",
             "Authorization": "Basic " + self.__credentials
         }
-        url = f'https://ext-api.vasttrafik.se/token?grant_type=client_credentials&scope={self.scope}'
-        response = requests.post(url, headers=header)
+        url: str = f'https://ext-api.vasttrafik.se/token?grant_type=client_credentials&scope={self.scope}'
+        response: Response = requests.post(url, headers=header)
 
         response.raise_for_status()
 
-        responseDict = response.json()
-        self.token = "Bearer " + responseDict.get("access_token")
+        responseDict: dict[str, str] = response.json()
+        self.token = "Bearer " + responseDict["access_token"]
 
 
     def checkResponse(self, response: Response):
         if response.status_code == 401:
             self.__renewToken()
 
-            header = {"Authorization": self.token}
+            header: dict[str, str] = {"Authorization": self.token}
             response = requests.get(response.url, headers=header)
 
         response.raise_for_status()
@@ -52,7 +56,7 @@ class Auth():
             print(e)
             with open("error.txt", "w") as f:
                 f.write(str(response.content))
-            raise Exception()
+            raise
 
 
     def checkResponses(self, response_list: list[tuple[StopReq,Response]]) -> list[tuple[StopReq,dict]]:
@@ -61,7 +65,7 @@ class Auth():
         else:
             print("Renewing token..")
             self.__renewToken()
-            header = {"Authorization": self.token}
+            header: dict[str, str] = {"Authorization": self.token}
 
             # Retry!
             session = FuturesSession()
@@ -91,8 +95,15 @@ class Reseplaneraren():
         response = requests.get(url, headers=header, params={"types":["stoparea"], "q": name})
         return self.auth.checkResponse(response)
 
-    def positions(self, lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, 
-                  detailsReferences=[], lineDesignations=[], limit=100):
+    def positions(self, 
+                  lowerLeftLat: float, 
+                  lowerLeftLon: float, 
+                  upperRightLat: float, 
+                  upperRightLon: float, 
+                  detailsReferences: list[str] = [], 
+                  lineDesignations: list[str] = [], 
+                  limit: int = 100
+                  ) -> list[dict[str,str | float | dict[str,str | bool] | list[dict[str,str]]]]: 
         if not 1 <= limit <= 200: raise ValueError("Limit must be between 1 and 200")
 
         header = {"Authorization": self.auth.token}

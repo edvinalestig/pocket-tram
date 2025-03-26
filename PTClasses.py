@@ -37,6 +37,7 @@ class Stop(Enum):
     Vasaplatsen             = 9021014007300000
     Vidblicksgatan          = 9021014007400000
     Wieselgrensgatan        = 9021014007420000
+    Wieselgrensplatsen      = 9021014007430000
     Ålandsgatan             = 9021014007440000
 
 class StopReq:
@@ -50,10 +51,20 @@ class StopReq:
     direction: Stop
     startDateTime: datetime
 
-    def __init__(self, title: str, showCountdown: bool, first: bool, dest: str, excludeLines: list[str], excludeDestinations: list[str], stop: Stop, direction: Stop, startDateTime: datetime):
+    def __init__(self, 
+                 title: str, 
+                 showCountdown: bool, 
+                 compileFirst: bool, 
+                 dest: str, 
+                 excludeLines: list[str], 
+                 excludeDestinations: list[str], 
+                 stop: Stop, 
+                 direction: Stop, 
+                 startDateTime: datetime
+                 ):
         self.title = title
         self.showCountdown = showCountdown
-        self.compileFirst = first
+        self.compileFirst = compileFirst
         self.dest = dest
         self.excludeDestinations = excludeDestinations
         self.excludeLines = excludeLines

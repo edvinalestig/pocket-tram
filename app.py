@@ -69,131 +69,92 @@ def position():
 
 @app.route("/request")
 def req():
-    place = request.args.get("place")
+    place = request.args.get("place", "")
     timeNow = datetime.now(tz.gettz("Europe/Stockholm")).strftime("%H:%M:%S")
-
-    if place == "lgh":
-        deps = getDepartures([
-            compileStopReq("Mot Chalmers", Stop.UlleviNorra, Stop.Chalmers, showCountdown=False, compileFirst=True),
-            compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Svingeln, Stop.HjalmarBrantingsplatsen, showCountdown=False, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["6"]),
-            compileStopReq("Mot Lindholmen", Stop.Svingeln, Stop.Lindholmen, showCountdown=False, compileFirst=True),
-            compileStopReq("Mot Centralstationen", Stop.UlleviNorra, Stop.Centralstationen)
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation(place),
-            "time": timeNow
-        })
-
-    elif place == "huset":
-        deps = getDepartures([
-            compileStopReq("Nya Varvets Torg", Stop.NyaVarvetsTorg, Stop.Järnvågen, showCountdown=False),
-            compileStopReq("Nya Varvsallén", Stop.NyaVarvsallén, Stop.Kungssten, showCountdown=False)
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation(place),
-            "time": timeNow
-        })
-
-    elif place == "jt":
-        deps = getDepartures([
-            compileStopReq("Mot Chalmers", Stop.Järntorget, Stop.Chalmers),
-            compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Järntorget, Stop.HjalmarBrantingsplatsen),
-            compileStopReq("Mot Pappa", Stop.Järntorget, Stop.Käringberget),
-            compileStopReq("Mot Mamma", Stop.Järntorget, Stop.UlleviNorra, excludeLines=["6"])
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation(place),
-            "time": timeNow
-        })
-
-    elif place == "domkyrkan":
-        deps = getDepartures([
-            compileStopReq("Mot Bjurslätts torg", Stop.Domkyrkan, Stop.Bjurslättstorget),
-            compileStopReq("Mot Kapellplatsen", Stop.Domkyrkan, Stop.Kapellplatsen)
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation(place),
-            "time": timeNow
-        })
-
-    elif place == "bjurslatt":
-        deps = getDepartures([
-            compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Bjurslättstorget, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["31"], excludeDestinations=["Kippholmen"]),
-            compileStopReq("Mot Lindholmen", Stop.Bjurslättstorget, Stop.Lindholmen)
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation(place),
-            "time": timeNow
-        })
-
-    elif place == "hjalmar":
-        deps = getDepartures([
-            compileStopReq("Mot Wieselgrensgatan", Stop.HjalmarBrantingsplatsen, Stop.Wieselgrensgatan, compileFirst=True, excludeLines=["31"]),
-            compileStopReq("Mot Chalmers", Stop.HjalmarBrantingsplatsen, Stop.Chalmers, excludeLines=["6"]),
-            compileStopReq("Mot Svingeln", Stop.HjalmarBrantingsplatsen, Stop.Svingeln, compileFirst=True, excludeLines=["6"])
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation(place),
-            "time": timeNow
-        })
-
-    elif place == "chalmers":
-        deps = getDepartures([
-            compileStopReq("Mot Domkyrkan", Stop.Chalmers, Stop.Domkyrkan, excludeLines=["6"]),
-            compileStopReq("Mot Brunnsparken", Stop.Chalmers, Stop.Brunnsparken, compileFirst=True, dest="Brunnsparken", excludeLines=["6"]),
-            compileStopReq("Mot Ullevi Norra", Stop.Chalmers, Stop.UlleviNorra, compileFirst=True, dest="Ullevi Norra"),
-            compileStopReq("Mot Lindholmen", Stop.Chalmers, Stop.Lindholmen)
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation(place),
-            "time": timeNow
-        })
-
-    elif place == "lindholmen":
-        deps = getDepartures([
-            compileStopReq("Mot Bjurslätts torg", Stop.Lindholmen, Stop.Bjurslättstorget),
-            compileStopReq("Mot Svingeln", Stop.Lindholmen, Stop.Svingeln, compileFirst=True),
-            compileStopReq("Båt", Stop.Lindholmspiren, Stop.Stenpiren),
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation(place),
-            "time": timeNow
-        })
-        
-    elif place == "brunnsparken":
-        deps = getDepartures([
-            compileStopReq("Mot Chalmers", Stop.Brunnsparken, Stop.Chalmers, excludeLines=["6"]),
-            compileStopReq("Mot Bjurslätts torg", Stop.Brunnsparken, Stop.Bjurslättstorget),
-            compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Brunnsparken, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.")
-        ])
-
-        return json.dumps({
-            "stops": {sr.title: dep for (sr,dep) in deps},
-            "ts": getTrafficSituation("centrum"),
-            "time": timeNow
-        })
-
+    deps = mapStops(place)
 
     return json.dumps({
-        "test":"test2",
-        "time": timeNow
-    })
+                "stops": {sr.title: dep for (sr,dep) in deps},
+                "ts": getTrafficSituation(place),
+                "time": timeNow
+            })
+
+def mapStops(place: str) -> list[tuple[StopReq,list]]:
+    match place:
+        case "lgh":
+            return getDepartures([
+                compileStopReq("Mot Chalmers", Stop.UlleviNorra, Stop.Chalmers, showCountdown=False, compileFirst=True),
+                compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Svingeln, Stop.HjalmarBrantingsplatsen, showCountdown=False, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["6"]),
+                compileStopReq("Mot Lindholmen", Stop.Svingeln, Stop.Lindholmen, showCountdown=False, compileFirst=True),
+                compileStopReq("Mot Centralstationen", Stop.UlleviNorra, Stop.Centralstationen)
+            ])
+
+        case "huset":
+            return getDepartures([
+                compileStopReq("Nya Varvets Torg", Stop.NyaVarvetsTorg, Stop.Järnvågen, showCountdown=False),
+                compileStopReq("Nya Varvsallén", Stop.NyaVarvsallén, Stop.Kungssten, showCountdown=False)
+            ])
+
+        case "jt":
+            return getDepartures([
+                compileStopReq("Mot Chalmers", Stop.Järntorget, Stop.Chalmers),
+                compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Järntorget, Stop.HjalmarBrantingsplatsen),
+                compileStopReq("Mot Pappa", Stop.Järntorget, Stop.Käringberget),
+                compileStopReq("Mot Mamma", Stop.Järntorget, Stop.UlleviNorra, excludeLines=["6"])
+            ])
+
+        case "domkyrkan":
+            return getDepartures([
+                compileStopReq("Mot Bjurslätts torg", Stop.Domkyrkan, Stop.Bjurslättstorget),
+                compileStopReq("Mot Kapellplatsen", Stop.Domkyrkan, Stop.Kapellplatsen)
+            ])
+
+        case "bjurslatt":
+            return getDepartures([
+                compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Bjurslättstorget, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["31"], excludeDestinations=["Kippholmen"]),
+                compileStopReq("Mot Lindholmen", Stop.Bjurslättstorget, Stop.Lindholmen)
+            ])
+
+        case "hjalmar":
+            return getDepartures([
+                compileStopReq("Mot Wieselgrensgatan", Stop.HjalmarBrantingsplatsen, Stop.Wieselgrensgatan, compileFirst=True, excludeLines=["31"]),
+                compileStopReq("Mot Chalmers", Stop.HjalmarBrantingsplatsen, Stop.Chalmers, excludeLines=["6"]),
+                compileStopReq("Mot Brunnsparken", Stop.HjalmarBrantingsplatsen, Stop.Brunnsparken, compileFirst=True),
+                compileStopReq("Mot Svingeln", Stop.HjalmarBrantingsplatsen, Stop.Svingeln, compileFirst=True, excludeLines=["6"])
+            ])
+
+        case "chalmers":
+            return getDepartures([
+                compileStopReq("Mot Domkyrkan", Stop.Chalmers, Stop.Domkyrkan, excludeLines=["6"]),
+                compileStopReq("Mot Brunnsparken", Stop.Chalmers, Stop.Brunnsparken, compileFirst=True, dest="Brunnsparken", excludeLines=["6"]),
+                compileStopReq("Mot Ullevi Norra", Stop.Chalmers, Stop.UlleviNorra, compileFirst=True, dest="Ullevi Norra"),
+                compileStopReq("Mot Lindholmen", Stop.Chalmers, Stop.Lindholmen)
+            ])
+
+        case "lindholmen":
+            return getDepartures([
+                compileStopReq("Mot Bjurslätts torg", Stop.Lindholmen, Stop.Bjurslättstorget),
+                compileStopReq("Mot Svingeln", Stop.Lindholmen, Stop.Svingeln, compileFirst=True),
+                compileStopReq("Båt", Stop.Lindholmspiren, Stop.Stenpiren),
+            ])
+        
+        case "brunnsparken":
+            return getDepartures([
+                compileStopReq("Mot Chalmers", Stop.Brunnsparken, Stop.Chalmers, excludeLines=["6"]),
+                compileStopReq("Mot Bjurslätts torg", Stop.Brunnsparken, Stop.Bjurslättstorget),
+                compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Brunnsparken, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.")
+            ])
+        
+        case "wieselgrensplatsen":
+            return getDepartures([
+                compileStopReq("Mot Bjurslätts torg", Stop.Wieselgrensplatsen, Stop.Bjurslättstorget, compileFirst=True),
+                compileStopReq("Mot Wieselgrensgatan", Stop.Wieselgrensplatsen, Stop.Wieselgrensgatan, excludeLines=["25","31"]),
+                compileStopReq("Mot Brunnsparken", Stop.Wieselgrensplatsen, Stop.Brunnsparken, compileFirst=True)
+            ])
+        
+        case _:
+            return []
+            
 
 def compileStopReq(title: str,
                    fr: Stop,
@@ -373,37 +334,34 @@ def prioTimes(t: int | str) -> int:
     return 99999999
 
 
-def getTrafficSituation(place: str):
+def getTrafficSituation(place: str) -> list[dict[str, str]]:
     # Stops to check for each place
-    placeStops = {
+    defaultStops: list[Stop] = [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget]
+    placeStops: dict[str, list[Stop]] = {
         "lgh":          [Stop.UlleviNorra, Stop.Svingeln, Stop.Chalmers, Stop.HjalmarBrantingsplatsen],
         "chalmers":     [Stop.Chalmers, Stop.UlleviNorra, Stop.Domkyrkan],
         "huset":        [Stop.NyaVarvetsTorg, Stop.NyaVarvsallén, Stop.Järntorget],
         "lindholmen":   [Stop.Lindholmen, Stop.Lindholmspiren, Stop.Svingeln, Stop.Stenpiren, Stop.Bjurslättstorget],
         "jt":           [Stop.Järntorget, Stop.Kungssten, Stop.NyaVarvetsTorg, Stop.NyaVarvsallén, Stop.Chalmers, Stop.UlleviNorra, Stop.HjalmarBrantingsplatsen],
-        "centrum":      [Stop.Brunnsparken, Stop.Centralstationen, Stop.Nordstan],
-        "domkyrkan":    [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget],
-        "brunnsparken": [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget],
-        "bjurslatt":    [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget],
-        "hjalmar":      [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget, Stop.Svingeln]
+        "hjalmar":      defaultStops + [Stop.Svingeln]
     }
 
-    traffic = [ts.stoparea(stop.value) for stop in placeStops[place]]
+    traffic = [ts.stoparea(stop.value) for stop in placeStops.get(place, defaultStops)]
     arr = [x for xs in traffic for x in xs] # Flatten list
     
-    with open("ts.json", "w") as f:
-        f.write(json.dumps(traffic))
+    # with open("ts.json", "w") as f:
+    #     f.write(json.dumps(traffic))
 
-    outarr = []
+    outarr: list[dict[str,str]] = []
     for situation in arr:
         # Get the start time and current time
         timeformat = "%Y-%m-%dT%H%M%S%z" # Format from västtrafik
-        time = situation.get("startTime").replace(":", "")
-        time = datetime.strptime(time, timeformat)
-        now = datetime.now(tz.UTC)
+        timeStr: str = situation.get("startTime").replace(":", "")
+        time: datetime = datetime.strptime(timeStr, timeformat)
+        now: datetime = datetime.now(tz.UTC)
         # Add it to the output array only if the disruption has started
         if time <= now:
-            relevant = {
+            relevant: dict[str, str] = {
                 "title": situation.get("title"), 
                 "description": situation.get("description")
             }

@@ -11,22 +11,15 @@ const timeSpan = document.getElementById("time");
 const places = {
     "chalmers": "Chalmers",
     "lgh": "Mamma",
-    // "markland": "Marklandsgatan",
     "jt": "Järntorget",
     "huset": "Pappa",
     "lindholmen": "Lindholmen",
-    // "kungssten": "Kungssten",
     "centrum": "Centrum",
     "bjurslatt": "Bjurslätts torg",
     "hjalmar": "Hjalmar Brantingsplatsen",
     "brunnsparken": "Brunnsparken",
-    "domkyrkan": "Domkyrkan"
-    // "vasaplatsen": "Vasaplatsen",
-    // "kapellplatsen": "Kapellplatsen",
-    // "ica": "ICA",
-    // "frihamnen": "Frihamnen",
-    // "stenpiren": "Stenpiren",
-    // "korsvagen": "Korsvägen"
+    "domkyrkan": "Domkyrkan",
+    "wieselgrensplatsen": "Wieselgrensplatsen"
 }
 
 function reset() {
