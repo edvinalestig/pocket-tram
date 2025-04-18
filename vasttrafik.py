@@ -165,6 +165,7 @@ class Reseplaneraren():
             "startDateTime": date_time.isoformat(),
             "limit": 25,
             "timeSpanInMinutes": 1339,
+            "maxArrivalsPerLineAndDirection": 100,
             "offset": offset
         })
         return self.auth.checkResponse(response)

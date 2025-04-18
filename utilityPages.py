@@ -4,6 +4,7 @@ from datetime import datetime
 from dateutil.tz import tz
 import math
 from vasttrafik import Reseplaneraren
+from jinja2 import Environment, FileSystemLoader
 
 def getDepDelay(dep, ank=False):
     date_time = datetime.fromisoformat("".join(dep.get("plannedTime").split(".0000000")))
@@ -147,8 +148,10 @@ class UtilityPages:
         html += "\n</body>\n</html>"
 
         return html
+    
+    def stopDepartures(self, args: dict) -> str:
+        isArrival: bool = args.get("arrivals") == "on"
 
-    def simpleSearchStop(self, args: dict) -> str:
         if args.get("stop"):
             stop = self.resep.locations_by_text(args["stop"])["results"]
             stopName = stop[0].get("name")
@@ -168,53 +171,49 @@ class UtilityPages:
             dateTime = datetime.fromisoformat("".join(args["datetime"].replace(" ", "+").split(".0000000")))
 
         offset = args.get("offset", 0)
-        departures = self.resep.departureBoard(stopID, dateTime, offset)
 
-        # with open("deps.json", "w") as f:
-        #     f.write(json.dumps(departures))
+        results = []
+        prevHref: str = ""
+        nextHref: str = ""
 
-        if not departures:
-            return "<a href='/utilities'>Inga avgångar</a>"
+        departures = self.resep.arrivalBoard(stopID, dateTime, offset) if isArrival else self.resep.departureBoard(stopID, dateTime, offset) 
+        results: list[dict[str,str]] = [
+            {
+                "lineBgColor": dep["serviceJourney"]["line"]["backgroundColor"],
+                "lineFgColor": dep["serviceJourney"]["line"]["foregroundColor"],
+                "lineBorderColor": dep["serviceJourney"]["line"]["borderColor"],
+                "lineName": dep["serviceJourney"]["line"]["shortName"],
+                "lineDestination": dep["serviceJourney"]["origin"] if isArrival else dep["serviceJourney"]["directionDetails"]["shortDirection"],
+                "lineTime": getDepDelay(dep),
+                "linePlatform": dep["stopPoint"]["platform"],
+                "detailsReference": dep["detailsReference"]
+            } for dep in departures["results"]
+        ]
 
-        res = departures["results"]
-        res.sort(key=lambda x: x["plannedTime"])
-        html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body style="font-family: sans-serif">'
-        html += "<a href='/utilities'>Till sökruta</a>"
-        html += f"<h2>{stopName} - {dateTime.strftime('%Y-%m-%d, %H:%M')}</h2>"
-        html += f"<a href='/findArrivals?{'&'.join([f'{k}={v}' for k,v in args.items()])}'>Ankomster</a>"
-        html += "\n<table>"
-        html += "\n<tr><th>Linje</th><th>Destination</th><th>Tid</th><th>Läge</th></tr>"
-        depRows = [(
-            f'\n<tr style="border: 5px solid red;">'
-            f"<td style='background-color: {dep['serviceJourney']['line']['backgroundColor']}; \
-                         color: {dep['serviceJourney']['line']['foregroundColor']}; \
-                         text-align: center; \
-                         border: 1px solid {dep['serviceJourney']['line']['borderColor']};'> \
-                         {dep['serviceJourney']['line']['shortName']}</td>"
-            f"<td><a href='/simpleDepInfo?ref={dep.get('detailsReference')}&gid={stopID}&ad=d'>{dep['serviceJourney']['direction'].split(', Påstigning fram')[0]}</a></td>"
-            f"<td style='text-align: center;'>{getDepDelay(dep)}</td>"
-            f"<td style='text-align: center;'>{dep['stopPoint'].get('platform')}</td>"
-            f"</tr>"
-            ) for dep in res]
-        
-        html += "".join(depRows)
-        html += "\n</table>"
-
-        if departures["links"].get("previous"):
-            prev = departures["links"].get("previous")
+        if prev := departures["links"].get("previous"):
             params = map(lambda x: x.split("="), prev.split("?")[1].split("&"))
             params = {k:v for k,v in params}
             dtime, offset = params["startDateTime"], params.get("offset", 0)
-            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}'>Föregående sida</a>"
-        if departures["links"].get("next"):
-            nxt = departures["links"].get("next")
+            prevHref = f"/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}{'&arrivals=on' if isArrival else ''}" 
+        if nxt := departures["links"].get("next"):
             params = map(lambda x: x.split("="), nxt.split("?")[1].split("&"))
             params = {k:v for k,v in params}
             dtime, offset = params["startDateTime"], params.get("offset", 0)
-            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}'>Nästa sida</a>"
-        html += "\n</body>\n</html>"
+            nextHref = f"/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}{'&arrivals=on' if isArrival else ''}"
 
-        return html
+        # Generate html using jinja2
+        env = Environment(loader=FileSystemLoader("templates"))
+        template = env.get_template("util_stop.html.j2")
+
+        return template.render(
+            departures = results,
+            stopName = stopName,
+            stopID = stopID,
+            dateTime = dateTime.strftime('%Y-%m-%d, %H:%M'),
+            nextHref = nextHref,
+            prevHref = prevHref,
+            isArrival = isArrival
+        )
 
     def simpleStopArrivals(self, args: dict):
         return json.dumps(args)

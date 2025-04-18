@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avgångar</title>
+</head>
+<body style="font-family: sans-serif">
+    <a href='/utilities'>Till sökruta</a>
+    <h2>{{ stopName }} - {{ dateTime }}</h2>
+
+    <input  type="checkbox"
+            id="arrivalscheckbox"
+            name="arrivals"
+            {% if isArrival %} 
+                checked 
+                onchange="document.location.assign(document.URL.replace('arrivals=on','arrivals=off'))"
+            {% else %}    
+                onchange="document.location.assign(document.location.search.includes('arrivals') ? document.URL.replace('arrivals=off','arrivals=on') : document.URL + '&arrivals=on')"
+            {% endif %}
+        />
+    <label for="arrivalscheckbox">Visa ankomster</label>
+
+    {% if departures == [] %}
+        <p>Inga avgångar</p>
+    {% else %}
+        <table>
+            <tr>
+                <th>Linje</th>
+                {% if isArrival %}
+                    <th>Från</th>
+                {% else %}
+                    <th>Destination</th>
+                {% endif %}
+                <th>Tid</th>
+                <th>Läge</th>
+            </tr>
+
+            {% for dep in departures %}
+                <tr>
+                    <td style='background-color: {{dep.lineBgColor}};
+                            color: {{dep.lineFgColor}};
+                            text-align: center;
+                            border: 1px solid {{dep.lineBorderColor}};'
+                        >{{dep.lineName}}</td>
+                    <td><a href='/simpleDepInfo?ref={{dep.detailsReference}}&gid={{stopID}}&ad=d'>{{dep.lineDestination}}</a></td>
+                    <td style='text-align: center;'>{{dep.lineTime}}</td>
+                    <td style='text-align: center;'>{{dep.linePlatform}}</td>
+                </tr>
+            {% endfor %}
+            </table>
+
+        {% if prevHref != "" %}
+            <br><a href='{{prevHref}}'>Föregående sida</a>
+        {% endif %}
+        {% if nextHref != "" %}
+            <br><a href='{{nextHref}}'>Nästa sida</a>
+        {% endif %}
+    {% endif %}
+
+</body>
+</html>

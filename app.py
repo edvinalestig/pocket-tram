@@ -41,7 +41,7 @@ def findDepartures():
     if request.args.get("moreInfo") == "on":
         return utilPages.searchStop(request.args)
     else:
-        return utilPages.simpleSearchStop(request.args)
+        return utilPages.stopDepartures(request.args)
 
 @app.route("/findArrivals")
 def findArrivals():
