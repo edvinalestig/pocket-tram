@@ -176,16 +176,16 @@ class UtilityPages:
         prevHref: str = ""
         nextHref: str = ""
 
-        departures = self.resep.arrivalBoard(stopID, dateTime, offset) if isArrival else self.resep.departureBoard(stopID, dateTime, offset) 
+        departures = self.resep.arrivalBoard(stopID, dateTime, offset) if isArrival else self.resep.departureBoard(stopID, dateTime, offset)
         results: list[dict[str,str]] = [
             {
                 "lineBgColor": dep["serviceJourney"]["line"]["backgroundColor"],
                 "lineFgColor": dep["serviceJourney"]["line"]["foregroundColor"],
                 "lineBorderColor": dep["serviceJourney"]["line"]["borderColor"],
                 "lineName": dep["serviceJourney"]["line"]["shortName"],
-                "lineDestination": dep["serviceJourney"]["origin"] if isArrival else dep["serviceJourney"]["directionDetails"]["shortDirection"],
+                "lineDestination": dep["serviceJourney"]["origin"] if isArrival else dep["serviceJourney"]["directionDetails"]["shortDirection"] + (f" via {dep['serviceJourney']['directionDetails']['via']}" if dep["serviceJourney"]["directionDetails"].get("via") else ""),
                 "lineTime": getDepDelay(dep),
-                "linePlatform": dep["stopPoint"]["platform"],
+                "linePlatform": dep["stopPoint"].get("platform", ""),
                 "detailsReference": dep["detailsReference"]
             } for dep in departures["results"]
         ]
