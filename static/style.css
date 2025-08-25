@@ -7,7 +7,7 @@ body {
     background-color: #eceff1;
 }
 
-#utilityLink {
+#utilityLink, #bridgeLink {
     text-align: center;
     text-decoration: none;
     color: black;

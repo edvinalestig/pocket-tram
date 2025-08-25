@@ -1,11 +1,14 @@
 from flask import Flask, request, send_file
+from jinja2 import Environment, FileSystemLoader
 from vasttrafik import Auth, Reseplaneraren, TrafficSituations
 import json
 import dateutil.tz as tz
+from dateutil.parser import isoparse
 from datetime import datetime, timedelta
 import math
 from os import environ
 
+from bridge import Bridge, AudienceEnum
 from PTClasses import Stop, StopReq
 from utilityPages import UtilityPages
 
@@ -78,6 +81,42 @@ def req():
                 "ts": getTrafficSituation(place),
                 "time": timeNow
             })
+
+@app.route("/bridge")
+def bridge():
+    bridge = Bridge()
+    car: str = bridge.roadSignals()
+    gc: str = bridge.sharedPathwaySignals()
+    boat: str = bridge.riverSignals()
+    message: str = bridge.bridgeMessages().get("message", "")
+
+    now = datetime.now(tz.UTC)
+    openings = bridge.historySignals(
+        fromDate=(now - timedelta(days=1)).strftime("%Y-%m-%d"),
+        toDate=(now + timedelta(days=1)).strftime("%Y-%m-%d"),
+        audienceName=AudienceEnum.Car
+    )
+    lastOpeningISO: str = max(openings, key=lambda x: x.get("Timestamp", "")).get("Timestamp", "-")
+    lastOpeningDT: datetime = isoparse(lastOpeningISO)
+    lastOpening: str = lastOpeningDT.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
+
+    # Generate html using jinja2
+    env = Environment(loader=FileSystemLoader("templates"))
+    template = env.get_template("bridge.html.j2")
+
+    return template.render(
+        car = car,
+        gc = gc,
+        boat = boat,
+        message = message,
+        lastOpening = lastOpening
+    )
+
+@app.route("/bridge2")
+def bridge2():
+    bridge = Bridge()
+    return bridge.historySignals("2025-08-24", "2025-08-26", AudienceEnum.Car)
+
 
 def mapStops(place: str) -> list[tuple[StopReq,list]]:
     match place:
