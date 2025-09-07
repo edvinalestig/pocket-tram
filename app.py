@@ -1,7 +1,7 @@
 from flask import Flask, request, send_file
 from jinja2 import Environment, FileSystemLoader
-from vasttrafik import Auth, Reseplaneraren, TrafficSituations
-from vasttrafik2 import Auth as Auth2, PR4
+from vasttrafik import Auth, Reseplaneraren
+from vasttrafik2 import Auth as Auth2, PR4, TrafficSituations
 import json
 import dateutil.tz as tz
 from datetime import datetime, timedelta
@@ -12,17 +12,18 @@ from bridge.bridge import Bridge
 from bridge.bridgeModels import *
 from PTClasses import Stop, StopReq, Departure
 from models.PR4.DeparturesAndArrivals import DepartureAPIModel, GetDeparturesResponse
+from models.TrafficSituations.TrafficSituations import TrafficSituation
 from utilityPages import UtilityPages
 
 app = Flask(__name__)
 
 auth = Auth(environ["VTClient"], environ["VTSecret"], "app")
 rp = Reseplaneraren(auth)
-ts = TrafficSituations(auth)
 utilPages = UtilityPages(rp)
 
 auth2 = Auth2(environ["VTClient"], environ["VTSecret"], "app2")
 pr4 = PR4(auth2)
+ts = TrafficSituations(auth2)
 
 @app.route("/")
 def index():
@@ -375,21 +376,17 @@ def getTrafficSituation(place: str) -> list[dict[str, str]]:
         "hjalmar":      defaultStops + [Stop.Svingeln]
     }
 
-    traffic = [ts.stoparea(stop.value) for stop in placeStops.get(place, defaultStops)]
-    arr = [x for xs in traffic for x in xs] # Flatten list
+    traffic: list[list[TrafficSituation]] = [ts.stoparea(stop.value) for stop in placeStops.get(place, defaultStops)]
+    arr: list[TrafficSituation] = [x for xs in traffic for x in xs] # Flatten list
 
     outarr: list[dict[str,str]] = []
     for situation in arr:
-        # Get the start time and current time
-        timeformat = "%Y-%m-%dT%H%M%S%z" # Format from västtrafik
-        timeStr: str = situation.get("startTime").replace(":", "")
-        time: datetime = datetime.strptime(timeStr, timeformat)
         now: datetime = datetime.now(tz.UTC)
         # Add it to the output array only if the disruption has started
-        if time <= now:
+        if situation.startTime <= now:
             relevant: dict[str, str] = {
-                "title": situation.get("title"), 
-                "description": situation.get("description")
+                "title": situation.title, 
+                "description": situation.description
             }
             # Skip duplicates
             if relevant not in outarr:

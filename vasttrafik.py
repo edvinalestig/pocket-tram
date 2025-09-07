@@ -181,51 +181,7 @@ class Reseplaneraren():
         return self.auth.checkResponse(response)
 
 
-class TrafficSituations():
-    def __init__(self, auth):
-        if type(auth) != Auth:
-            raise TypeError("Expected Auth object")
-        self.auth = auth
-        self.url = "https://ext-api.vasttrafik.se/ts/v1/traffic-situations"
-
-    
-    def __get(self, url):
-        header = {"Authorization": self.auth.token}
-        response = requests.get(url, headers=header)
-        return self.auth.checkResponse(response)
-
-    
-    def trafficsituations(self):
-        url = self.url
-        return self.__get(url)
-
-
-    def stoppoint(self, gid):
-        url = self.url + f'/stoppoint/{gid}'
-        return self.__get(url)
-
-
-    def situation(self, gid):
-        url = self.url + f'/{gid}'
-        return self.__get(url)
-
-
-    def line(self, gid):
-        url = self.url + f'/line/{gid}'
-        return self.__get(url)
-
-
-    def journey(self, gid):
-        url = self.url + f'/journey/{gid}'
-        return self.__get(url)
-
-
-    def stoparea(self, gid):
-        url = self.url + f'/stoparea/{gid}'
-        return self.__get(url)
-
-
 if __name__ == "__main__":
     print("Import using 'import vasttrafik'")
     print("or by importing selected classes only:")
-    print("'from vasttrafik import Auth, Reseplaneraren, TrafficSituations'")
+    print("'from vasttrafik import Auth, Reseplaneraren'")

@@ -6,6 +6,7 @@ from requests import Response
 from requests_futures.sessions import FuturesSession
 
 from models.PR4.DeparturesAndArrivals import GetDeparturesResponse, GetArrivalsResponse
+import models.TrafficSituations.TrafficSituations as TSModels
 from PTClasses import StopReq
 
 class Auth():
@@ -82,12 +83,14 @@ class PR4():
             raise TypeError("Expected Auth object")
         self.auth = auth
 
+
     def locations_by_text(self, name: str) -> dict:
         header = {"Authorization": self.auth.token}
         url = "https://ext-api.vasttrafik.se/pr/v4/locations/by-text"
 
         response = requests.get(url, headers=header, params={"types":["stoparea"], "q": name})
         return self.auth.checkResponse(response).json()
+
 
     def positions(self, 
                   lowerLeftLat: float, 
@@ -165,7 +168,6 @@ class PR4():
         return GetArrivalsResponse(**self.auth.checkResponse(response).json())
 
 
-
     def request(self, ref: str, gid: str, ank: bool, geo: bool = False):
         base_url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
         url = f"{base_url}/{gid}/{'arrivals' if ank else 'departures'}/{ref}/details?includes=servicejourneycalls"
@@ -175,48 +177,47 @@ class PR4():
         return self.auth.checkResponse(response).json()
 
 
-# class TrafficSituations():
-#     def __init__(self, auth):
-#         if type(auth) != Auth:
-#             raise TypeError("Expected Auth object")
-#         self.auth = auth
-#         self.url = "https://ext-api.vasttrafik.se/ts/v1/traffic-situations"
+class TrafficSituations():
+    def __init__(self, auth) -> None:
+        if type(auth) != Auth:
+            raise TypeError("Expected Auth object")
+        self.auth = auth
+        self.url = "https://ext-api.vasttrafik.se/ts/v1/traffic-situations"
 
     
-#     def __get(self, url):
-#         header = {"Authorization": self.auth.token}
-#         response = requests.get(url, headers=header)
-#         return self.auth.checkResponse(response)
+    def __get(self, url) -> Response:
+        header = {"Authorization": self.auth.token}
+        response = requests.get(url, headers=header)
+        return self.auth.checkResponse(response)
 
     
-#     def trafficsituations(self):
-#         url = self.url
-#         return self.__get(url)
+    def trafficsituations(self) -> list[TSModels.TrafficSituation]:
+        return TSModels.TrafficSituationList.model_validate_json(self.__get(self.url).text).root
 
 
-#     def stoppoint(self, gid):
-#         url = self.url + f'/stoppoint/{gid}'
-#         return self.__get(url)
+    def stoppoint(self, gid) -> list[TSModels.TrafficSituation]:
+        resp: Response = self.__get(self.url + f'/stoppoint/{gid}')
+        return TSModels.TrafficSituationList.model_validate_json(resp.text).root
 
 
-#     def situation(self, gid):
-#         url = self.url + f'/{gid}'
-#         return self.__get(url)
+    def situation(self, gid) -> TSModels.TrafficSituation:
+        resp: Response = self.__get(self.url + f'/{gid}')
+        return TSModels.TrafficSituation.model_validate_json(resp.text)
 
 
-#     def line(self, gid):
-#         url = self.url + f'/line/{gid}'
-#         return self.__get(url)
+    def line(self, gid) -> list[TSModels.TrafficSituation]:
+        resp: Response = self.__get(self.url + f'/line/{gid}')
+        return TSModels.TrafficSituationList.model_validate_json(resp.text).root
 
 
-#     def journey(self, gid):
-#         url = self.url + f'/journey/{gid}'
-#         return self.__get(url)
+    def journey(self, gid) -> list[TSModels.TrafficSituation]:
+        resp: Response = self.__get(self.url + f'/journey/{gid}')
+        return TSModels.TrafficSituationList.model_validate_json(resp.text).root
 
 
-#     def stoparea(self, gid):
-#         url = self.url + f'/stoparea/{gid}'
-#         return self.__get(url)
+    def stoparea(self, gid) -> list[TSModels.TrafficSituation]:
+        resp: Response = self.__get(self.url + f'/stoparea/{gid}')
+        return TSModels.TrafficSituationList.model_validate_json(resp.text).root
 
 
 if __name__ == "__main__":
