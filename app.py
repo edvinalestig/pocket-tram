@@ -3,12 +3,12 @@ from jinja2 import Environment, FileSystemLoader
 from vasttrafik import Auth, Reseplaneraren, TrafficSituations
 import json
 import dateutil.tz as tz
-from dateutil.parser import isoparse
 from datetime import datetime, timedelta
 import math
 from os import environ
 
-from bridge import Bridge, AudienceEnum
+from bridge.bridge import Bridge
+from bridge.bridgeModels import *
 from PTClasses import Stop, StopReq
 from utilityPages import UtilityPages
 
@@ -85,38 +85,39 @@ def req():
 @app.route("/bridge")
 def bridge():
     bridge = Bridge()
-    car: str = bridge.roadSignals()
-    gc: str = bridge.sharedPathwaySignals()
-    boat: str = bridge.riverSignals()
-    message: str = bridge.bridgeMessages().get("message", "")
+    car: StatusEnum = bridge.roadSignals().status
+    gc: StatusEnum = bridge.sharedPathwaySignals().status
+    boat: StatusEnum = bridge.riverSignals().status
+    message: MessageModel = bridge.bridgeMessages()
 
-    now = datetime.now(tz.UTC)
-    openings = bridge.historySignals(
+    now: datetime = datetime.now(tz.UTC)
+    openings: list[HistorySignalsModel] = bridge.historySignals(
         fromDate=(now - timedelta(days=1)).strftime("%Y-%m-%d"),
         toDate=(now + timedelta(days=1)).strftime("%Y-%m-%d"),
-        audienceName=AudienceEnum.Car
+        audienceName=AudienceEnum.GC
     )
-    lastOpeningISO: str = max(openings, key=lambda x: x.get("Timestamp", "")).get("Timestamp", "-")
-    lastOpeningDT: datetime = isoparse(lastOpeningISO)
-    lastOpening: str = lastOpeningDT.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
+    openings.sort(reverse=True, key=lambda x: x.Timestamp)
+    
+    lastChange: str = openings[0].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%H:%M")
+    penultimateChange: str = openings[1].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
+
+    lastOpening: str
+    if gc == StatusEnum.Closed:
+        lastOpening = f"Nu (sedan {lastChange})"
+    else:
+        lastOpening = f"{penultimateChange} - {lastChange}"
 
     # Generate html using jinja2
     env = Environment(loader=FileSystemLoader("templates"))
     template = env.get_template("bridge.html.j2")
 
     return template.render(
-        car = car,
-        gc = gc,
-        boat = boat,
-        message = message,
+        car = car.value,
+        gc = gc.value,
+        boat = boat.value,
+        message = "-" if message.message == "" else f'{message.message} (utfärdat {message.timeStamp.strftime("%d %b %Y kl. %H:%M")})',
         lastOpening = lastOpening
     )
-
-@app.route("/bridge2")
-def bridge2():
-    bridge = Bridge()
-    return bridge.historySignals("2025-08-24", "2025-08-26", AudienceEnum.Car)
-
 
 def mapStops(place: str) -> list[tuple[StopReq,list]]:
     match place:
@@ -150,7 +151,7 @@ def mapStops(place: str) -> list[tuple[StopReq,list]]:
 
         case "bjurslatt":
             return getDepartures([
-                compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Bjurslättstorget, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["31"], excludeDestinations=["Kippholmen"]),
+                compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Bjurslättstorget, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["31"]),
                 compileStopReq("Mot Lindholmen", Stop.Bjurslättstorget, Stop.Lindholmen)
             ])
 
@@ -199,14 +200,14 @@ def compileStopReq(title: str,
                    fr: Stop,
                    to: Stop,
                    showCountdown: bool = True,
-                   compileFirst: bool = False, 
-                   dest: str | None = None, 
-                   offset: int = 0, 
-                   excludeLines: list[str] = [], 
+                   compileFirst: bool = False,
+                   dest: str | None = None,
+                   offset: int = 0,
+                   excludeLines: list[str] = [],
                    excludeDestinations: list[str] = []
                    ) -> StopReq:
     timeNow = datetime.now(tz.gettz("Europe/Stockholm")) + timedelta(minutes=offset)
-    return StopReq(title, showCountdown, compileFirst, dest or to.name, excludeLines, excludeDestinations, fr, to, timeNow) 
+    return StopReq(title=title, showCountdown=showCountdown, compileFirst=compileFirst, dest=dest or to.name, excludeLines=excludeLines, excludeDestinations=excludeDestinations, stop=fr, direction=to, startDateTime=timeNow) 
 
 # Takes a list of compiled dicts and returns a list of cleaned results
 def getDepartures(reqList: list[StopReq]) -> list[tuple[StopReq,list]]:

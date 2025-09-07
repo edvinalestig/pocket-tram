@@ -1,13 +1,8 @@
 import json
 import os
-from enum import Enum
 import requests
 from requests import Response
-
-class AudienceEnum(Enum):
-    Car = "Car"
-    Maritime = "Maritime"
-    GC = "GC"
+from bridge.bridgeModels import *
 
 class Bridge:
     _headers: dict[str,str]
@@ -20,27 +15,27 @@ class Bridge:
             "Ocp-Apim-Subscription-Key": apiKey
         }
 
-    def bridgeMessages(self) -> dict[str,str]:
+    def bridgeMessages(self) -> MessageModel:
         r: Response = requests.get(self._baseURL + "bridgemessages", headers=self._headers)
         r.raise_for_status()
-        return r.json()
+        return MessageModel(**r.json())
     
-    def riverSignals(self) -> str:
+    def riverSignals(self) -> SignalsModel:
         r: Response = requests.get(self._baseURL + "riversignals", headers=self._headers)
         r.raise_for_status()
-        return r.json().get("status")
+        return SignalsModel(**r.json())
     
-    def roadSignals(self) -> str:
+    def roadSignals(self) -> SignalsModel:
         r: Response = requests.get(self._baseURL + "roadsignals", headers=self._headers)
         r.raise_for_status()
-        return r.json().get("status")
+        return SignalsModel(**r.json())
     
-    def sharedPathwaySignals(self) -> str:
+    def sharedPathwaySignals(self) -> SignalsModel:
         r: Response = requests.get(self._baseURL + "sharedpathwaysignals", headers=self._headers)
         r.raise_for_status()
-        return r.json().get("status")
+        return SignalsModel(**r.json())
     
-    def historySignals(self, fromDate: str, toDate: str, audienceName: AudienceEnum) -> list[dict]:
+    def historySignals(self, fromDate: str, toDate: str, audienceName: AudienceEnum) -> list[HistorySignalsModel]:
         body: dict[str,str] = {
             "fromDate": fromDate,
             "toDate": toDate,
@@ -48,5 +43,4 @@ class Bridge:
         }
         r: Response = requests.post(self._baseURL + "historysignals", json=body, headers=self._headers)
         r.raise_for_status()
-        print(r.json() == r.text)
-        return json.loads(r.json())
+        return [HistorySignalsModel(**entry) for entry in json.loads(r.json())]

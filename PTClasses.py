@@ -1,5 +1,6 @@
 from enum import Enum
 from datetime import datetime, timezone
+from pydantic import BaseModel
 
 # Stop IDs (GID)
 class Stop(Enum):
@@ -40,7 +41,7 @@ class Stop(Enum):
     Wieselgrensplatsen      = 9021014007430000
     Ålandsgatan             = 9021014007440000
 
-class StopReq:
+class StopReq(BaseModel):
     title: str
     showCountdown: bool
     compileFirst: bool
@@ -50,27 +51,6 @@ class StopReq:
     stop: Stop
     direction: Stop
     startDateTime: datetime
-
-    def __init__(self, 
-                 title: str, 
-                 showCountdown: bool, 
-                 compileFirst: bool, 
-                 dest: str, 
-                 excludeLines: list[str], 
-                 excludeDestinations: list[str], 
-                 stop: Stop, 
-                 direction: Stop, 
-                 startDateTime: datetime
-                 ):
-        self.title = title
-        self.showCountdown = showCountdown
-        self.compileFirst = compileFirst
-        self.dest = dest
-        self.excludeDestinations = excludeDestinations
-        self.excludeLines = excludeLines
-        self.stop = stop
-        self.direction = direction
-        self.startDateTime = startDateTime
 
     def getParams(self) -> dict[str, int | str]:
         return {
