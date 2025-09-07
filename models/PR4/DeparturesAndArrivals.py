@@ -1,72 +1,8 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
-from enum import Enum
-from models.APIResponse import APIResponseModel
-
-class PaginationProperties(BaseModel):
-    limit: int
-    offset: int
-    size: int
-
-class PaginationLinks(BaseModel):
-    previous: Optional[str] = None
-    next: Optional[str] = None
-    current: Optional[str] = None
-
-class OccupancyLevel(Enum):
-    low = "low"
-    medium = "medium"
-    high = "high"
-    incomplete = "incomplete"
-    missing = "missing"
-    notpublictransport = "notpublictransport"
-
-class OccupancySource(Enum):
-    prediction = "prediction"
-    realtime = "realtime"
-
-class Occupancy(BaseModel):
-    level: OccupancyLevel
-    source: OccupancySource
-
-class DirectionDetails(BaseModel):
-    fullDirection: Optional[str] = None
-    shortDirection: Optional[str] = None
-    replaces: Optional[str] = None
-    via: Optional[str] = None
-    isFreeService: Optional[bool] = None
-    isPaidService: Optional[bool] = None
-    isSwimmingService: Optional[bool] = None
-    isDirectDestinationBus: Optional[bool] = None
-    isFrontEntry: Optional[bool] = None
-    isExtraBus: Optional[bool] = None
-    isExtraBoat: Optional[bool] = None
-    isExtraTram: Optional[bool] = None
-    isSchoolBus: Optional[bool] = None
-    isExpressBus: Optional[bool] = None
-    fortifiesLine: Optional[str] = None
-
-class TransportMode(Enum):
-    unknown = "unknown"
-    none = "none"
-    tram = "tram"
-    bus = "bus"
-    ferry = "ferry"
-    train = "train"
-    taxi = "taxi"
-    walk = "walk"
-    bike = "bike"
-    car = "car"
-    teletaxi = "teletaxi"
-
-class TransportSubMode(Enum):
-    unknown = "unknown"
-    none = "none"
-    vasttagen = "vasttagen"
-    longdistancetrain = "longdistancetrain"
-    regionaltrain = "regionaltrain"
-    flygbussarna = "flygbussarna"
+from models.PR4.PR4 import *
+import models.PR4.JourneyDetails as JourneyDetails
 
 class Line(BaseModel):
     gid: Optional[str] = None
@@ -84,7 +20,7 @@ class ServiceJourney(BaseModel):
     gid: str
     origin: Optional[str] = None
     direction: Optional[str] = None
-    directionDetails: DirectionDetails
+    directionDetails: Optional[DirectionDetails] = None
     line: Line
 
 class StopPoint(BaseModel):
@@ -103,9 +39,9 @@ class DepartureAPIModel(BaseModel):
     estimatedOtherwisePlannedTime: datetime
     isCancelled: bool
     isPartCancelled: bool
-    occupancy: Optional[Occupancy] = None
+    occupancy: Optional[OccupancyInformation] = None
 
-class GetDeparturesResponse(APIResponseModel, BaseModel):
+class GetDeparturesResponse(BaseModel):
     results: list[DepartureAPIModel]
     pagination: PaginationProperties
     links: PaginationLinks
@@ -120,7 +56,51 @@ class ArrivalsAPIModel(BaseModel):
     isCancelled: bool
     isPartCancelled: bool
 
-class GetArrivalsResponse(APIResponseModel, BaseModel):
-    results: ArrivalsAPIModel
+class GetArrivalsResponse(BaseModel):
+    results: list[ArrivalsAPIModel]
     pagination: PaginationProperties
     links: PaginationLinks
+
+class LineDetails(BaseModel):
+    name: Optional[str] = None
+    detailName: Optional[str] = None
+    backgroundColor: Optional[str] = None
+    foregroundColor: Optional[str] = None
+    borderColor: Optional[str] = None
+    transportMode: TransportMode
+    transportSubMode: TransportSubMode
+
+class Coordinate(BaseModel):
+    latitude: float
+    longitude: float
+    elevation: Optional[float] = None
+
+class CallDetails(BaseModel):
+    stopPoint: JourneyDetails.StopPoint
+    plannedArrivalTime: Optional[datetime] = None
+    estimatedArrivalTime: Optional[datetime] = None
+    plannedDepartureTime: Optional[datetime] = None
+    estimatedDepartureTime: Optional[datetime] = None
+    estimatedOtherwisePlannedArrivalTime: Optional[datetime] = None
+    estimatedOtherwisePlannedDepartureTime: Optional[datetime] = None
+    plannedPlatform: Optional[str] = None
+    estimatedPlatform: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    index: Optional[str] = None
+    occupancy: Optional[OccupancyInformation] = None
+    isCancelled: bool
+    isDepartureCancelled: Optional[bool] = None
+    isArrivalCancelled: Optional[bool] = None
+
+class ServiceJourneyDetails(BaseModel):
+    gid: Optional[str] = None
+    direction: Optional[str] = None
+    directionDetails: DirectionDetails
+    line: LineDetails
+    serviceJourneyCoordinates: list[Coordinate] = []
+    callsOnServiceJourney: list[CallDetails] = []
+
+class DepartureDetails(BaseModel):
+    serviceJourneys: list[ServiceJourneyDetails] = []
+    occupancy: Optional[OccupancyInformation] = None

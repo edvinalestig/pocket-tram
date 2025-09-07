@@ -19,11 +19,11 @@ app = Flask(__name__)
 
 auth = Auth(environ["VTClient"], environ["VTSecret"], "app")
 rp = Reseplaneraren(auth)
-utilPages = UtilityPages(rp)
 
 auth2 = Auth2(environ["VTClient"], environ["VTSecret"], "app2")
 pr4 = PR4(auth2)
 ts = TrafficSituations(auth2)
+utilPages = UtilityPages(pr4, rp)
 
 @app.route("/")
 def index():
@@ -39,7 +39,7 @@ def favicon():
 def seachStop():
     if (stop := request.args.get("stop")) is None:
         return "Add ?stop=xxx to the url"
-    return json.dumps(rp.locations_by_text(stop))
+    return pr4.locations_by_text(stop).model_dump_json()
 
 @app.route("/utilities")
 def utilities():
@@ -239,7 +239,7 @@ def clean(sr: StopReq, resp: GetDeparturesResponse) -> tuple[StopReq, list[Depar
         line: str = dep.serviceJourney.line.shortName or "?"
         if line in sr.excludeLines: continue
 
-        dest: str = (dep.serviceJourney.directionDetails.shortDirection or "?").replace("Brantingsplatsen", "Brantingspl.")
+        dest: str = (dep.serviceJourney.directionDetails.shortDirection).replace("Brantingsplatsen", "Brantingspl.") # type: ignore
         if dest in sr.excludeDestinations: continue
 
         ctdown: str | int = calculateCountdown(dep)

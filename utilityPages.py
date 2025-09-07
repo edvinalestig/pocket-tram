@@ -1,69 +1,74 @@
+from typing import Literal
 from flask import send_file
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil.tz import tz
 import math
+from models.PR4.DeparturesAndArrivals import CallDetails, GetArrivalsResponse, GetDeparturesResponse, ArrivalsAPIModel, DepartureAPIModel, ServiceJourneyDetails
+from models.PR4.Locations import Location
 from vasttrafik import Reseplaneraren
 from jinja2 import Environment, FileSystemLoader
 
-def getDepDelay(dep, ank=False):
-    date_time = datetime.fromisoformat("".join(dep.get("plannedTime").split(".0000000")))
+from vasttrafik2 import PR4
 
-    if dep.get("isCancelled"):
-        return date_time.strftime("%H:%M X")
+def getDepDelay(dep: ArrivalsAPIModel | DepartureAPIModel, ank=False) -> str:
+    if dep.isCancelled:
+        return dep.plannedTime.strftime("%H:%M X")
 
     # Check if real time info is available
-    rttime = dep.get("estimatedTime")
-    if rttime is None:
-        return date_time.strftime(f"%H:%M")
+    if not dep.estimatedTime:
+        return dep.plannedTime.strftime(f"%H:%M")
 
-    real_date_time = datetime.fromisoformat("".join(dep.get("estimatedTime").split(".0000000")))
-    delta = real_date_time - date_time
+    delta: timedelta = dep.estimatedTime - dep.plannedTime
 
     # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
     delay = delta.days * 1440 + math.ceil(delta.seconds/60)
 
     if delay >= 0:
-        return date_time.strftime(f"%H:%M+{delay}")
+        return dep.plannedTime.strftime(f"%H:%M+{delay}")
     else:
-        return date_time.strftime("%H:%M") + str(delay)
+        return dep.plannedTime.strftime("%H:%M") + str(delay)
 
-def getStopDelay(stop, ank=False):
-    date_time = datetime.fromisoformat("".join(stop.get("plannedArrivalTime" if ank else "plannedDepartureTime").split(".0000000")))
-
-    if stop.get("isArrivalCancelled" if ank else "isDepartureCancelled"):
-        return date_time.strftime("%H:%M X")
+def getStopDelay(stop: CallDetails, ank=False) -> str:
+    plannedTime: datetime = stop.plannedArrivalTime if ank else stop.plannedDepartureTime # type: ignore
+    
+    if (ank and stop.isArrivalCancelled) or (not ank and stop.isDepartureCancelled):
+        return plannedTime.strftime("%H:%M X")
 
     # Check if real time info is available
-    rttime = stop.get("estimatedArrivalTime" if ank else "estimatedDepartureTime")
-    if rttime is None:
-        return date_time.strftime(f"%H:%M")
+    if not stop.estimatedArrivalTime and not stop.estimatedDepartureTime:
+        return (stop.plannedArrivalTime if ank else stop.plannedDepartureTime).strftime("%H:%M") # type: ignore
 
-    real_date_time = datetime.fromisoformat("".join(stop.get("estimatedArrivalTime" if ank else "estimatedDepartureTime").split(".0000000")))
-    delta = real_date_time - date_time
+    realTime: datetime = stop.estimatedArrivalTime if ank else stop.estimatedDepartureTime # type: ignore
+    delta: timedelta = realTime - plannedTime
 
     # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
-    delay = delta.days * 1440 + math.ceil(delta.seconds/60)
+    delay: int = delta.days * 1440 + math.ceil(delta.seconds/60)
 
     if delay >= 0:
-        return date_time.strftime(f"%H:%M+{delay}")
+        return plannedTime.strftime(f"%H:%M+{delay}")
     else:
-        return date_time.strftime("%H:%M") + str(delay)
+        return plannedTime.strftime("%H:%M") + str(delay)
 
 ###############################
 
 class UtilityPages:
-    def __init__(self, resep: Reseplaneraren):
+    def __init__(self, pr4: PR4, resep: Reseplaneraren) -> None:
+        self.pr4: PR4 = pr4
         self.resep = resep
 
     def mainPage(self):
         return send_file("static/util.html")
 
     def searchStop(self, args):
+        stopID: str
+        stopName: str
         if args.get("stop"):
-            stop = self.resep.locations_by_text(args.get("stop"))["results"]
-            stopName = stop[0].get("name")
-            stopID = stop[0].get("gid")
+            stop: list[Location] = self.pr4.locations_by_text(args.get("stop")).results
+            if not stop:
+                return "<a href='/utilities'>Inga träffar</a>"
+            stopName = stop[0].name
+            stopID = stop[0].gid or ""
         else:
             stopID = args.get("stopId")
             stopName = args.get("stopName")
@@ -78,14 +83,11 @@ class UtilityPages:
         if args.get("datetime"):
             dateTime = datetime.fromisoformat("".join(args["datetime"].replace(" ", "+").split(".0000000")))
 
-        offset = args.get("offset") if args.get("offset") else 0
+        offset: int = args.get("offset", 0)
 
-        departures = self.resep.departureBoard(stopID, dateTime, offset)
+        departures: GetDeparturesResponse = self.pr4.departureBoard(stopID, dateTime, offset)
 
-        # with open("deps.json", "w") as f:
-        #     f.write(json.dumps(departures))
-
-        if not departures.get("results"):
+        if not departures.results:
             return "<a href='/utilities'>Inga avgångar</a>"
 
 
@@ -101,8 +103,7 @@ class UtilityPages:
             "regionaltrain": "Regionaltåg"
         }
 
-        res = departures["results"]
-        res.sort(key=lambda x: x["plannedTime"])
+        departures.results.sort(key=lambda x: x.plannedTime)
 
         html = '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Avgångar</title>\n</head>\n<body style="font-family: sans-serif">'
         html += "<a href='/utilities'>Till sökruta</a>"
@@ -111,39 +112,39 @@ class UtilityPages:
         html += "\n<tr><th>Linje</th><th>Destination</th><th>TT-tid</th><th>RT-tid</th><th>Låggolv</th><th>Läge</th><th>Typ</th><th>Subtyp</th><th>Inställd</th><th>Mer info</th></tr>"
         depRows = [(
             f'\n<tr style="border: 5px solid red;">'
-            f"<td style='background-color: {dep['serviceJourney']['line']['backgroundColor']}; \
-                         color: {dep['serviceJourney']['line']['foregroundColor']}; \
+            f"<td style='background-color: {dep.serviceJourney.line.backgroundColor}; \
+                         color: {dep.serviceJourney.line.foregroundColor}; \
                          text-align: center; \
-                         border: 1px solid {dep['serviceJourney']['line']['borderColor']};'> \
-                         {dep['serviceJourney']['line']['shortName']}</td>"
-            f"<td><a href='/simpleDepInfo?ref={dep.get('detailsReference')}&gid={stopID}&ad=d'>{dep['serviceJourney']['direction']}</a></td>"
-            f"<td style='text-align: center;'>{datetime.fromisoformat(''.join(dep['plannedTime'].split('.0000000'))).strftime('%H:%M')}</td>"
-            f"<td style='text-align: center;'>{datetime.fromisoformat(''.join(dep['estimatedTime'].split('.0000000'))).strftime('%H:%M') if dep.get('estimatedTime') else '-'}</td>"
-            f"<td style='text-align: center;'>{'♿' if dep['serviceJourney']['line']['isWheelchairAccessible'] else '❌'}</td>"
-            f"<td style='text-align: center;'>{dep['stopPoint'].get('platform')}</td>"
-            f"<td style='text-align: center;'>{types.get(dep['serviceJourney']['line']['transportMode'], 'mode')}</td>"
-            f"<td style='text-align: center;'>{types.get(dep['serviceJourney']['line']['transportSubMode'], 'submode')}</td>"
-            f"<td style='text-align: center;'>{'🔴' if dep.get('isCancelled') else '🟢'}</td>"
-            f"<td style='text-align: center;'><a href='/depInfo?ref={dep.get('detailsReference')}&gid={stopID}&ad=d'>Mer info</a></td>"
+                         border: 1px solid {dep.serviceJourney.line.borderColor};'> \
+                         {dep.serviceJourney.line.shortName}</td>"
+            f"<td><a href='/simpleDepInfo?ref={dep.detailsReference}&gid={stopID}&ad=d'>{dep.serviceJourney.direction}</a></td>"
+            f"<td style='text-align: center;'>{dep.plannedTime.strftime('%H:%M')}</td>"
+            f"<td style='text-align: center;'>{dep.estimatedTime.strftime('%H:%M') if dep.estimatedTime is not None else '-'}</td>"
+            f"<td style='text-align: center;'>{'♿' if dep.serviceJourney.line.isWheelchairAccessible else '❌'}</td>"
+            f"<td style='text-align: center;'>{dep.stopPoint.platform}</td>"
+            f"<td style='text-align: center;'>{types.get(dep.serviceJourney.line.transportMode.value, '?')}</td>"
+            f"<td style='text-align: center;'>{types.get(dep.serviceJourney.line.transportSubMode.value, '?')}</td>"
+            f"<td style='text-align: center;'>{'🔴' if dep.isCancelled else '🟢'}</td>"
+            f"<td style='text-align: center;'><a href='/depInfo?ref={dep.detailsReference}&gid={stopID}&ad=d'>Mer info</a></td>"
             f"</tr>"
-            ) for dep in res]
+            ) for dep in departures.results]
         
         html += "".join(depRows)
         html += "\n</table>"
 
-        if departures["links"].get("previous"):
-            prev = departures["links"].get("previous")
-            params = map(lambda x: x.split("="), prev.split("?")[1].split("&"))
-            params = {k:v for k,v in params}
-            dtime, offset = params["startDateTime"], params.get("offset", 0)
-            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}&moreInfo=on'>Föregående sida</a>"
+        if departures.links.previous:
+            prev: str = departures.links.previous
+            params: dict[str, str] = {k:v for k,v in map(lambda x: x.split("="), prev.split("?")[1].split("&"))}
+            dtime: str = params["startDateTime"]
+            offset2: str = params.get("offset", "0")
+            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset2}&moreInfo=on'>Föregående sida</a>"
 
-        if departures["links"].get("next"):
-            nxt = departures["links"].get("next")
-            params = map(lambda x: x.split("="), nxt.split("?")[1].split("&"))
-            params = {k:v for k,v in params}
-            dtime, offset = params["startDateTime"], params.get("offset", 0)
-            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}&moreInfo=on'>Nästa sida</a>"
+        if departures.links.next:
+            nxt: str = departures.links.next
+            params: dict[str, str] = {k:v for k,v in map(lambda x: x.split("="), nxt.split("?")[1].split("&"))}
+            dtime: str = params["startDateTime"]
+            offset2: str = params.get("offset", "0")
+            html += f"<br><a href='/findDepartures?stop={stopName}&datetime={dtime}&offset={offset2}&moreInfo=on'>Nästa sida</a>"
 
         html += "\n</body>\n</html>"
 
@@ -152,10 +153,14 @@ class UtilityPages:
     def stopDepartures(self, args: dict) -> str:
         isArrival: bool = args.get("arrivals") == "on"
 
+        stopID: str
+        stopName: str
         if args.get("stop"):
-            stop = self.resep.locations_by_text(args["stop"])["results"]
-            stopName = stop[0].get("name")
-            stopID = stop[0].get("gid")
+            stop: list[Location] = self.pr4.locations_by_text(args["stop"]).results
+            if not stop:
+                return "<a href='/utilities'>Inga träffar</a>"
+            stopName = stop[0].name
+            stopID = stop[0].gid or ""
         else:
             stopID = args["stopId"]
             stopName = args["stopName"]
@@ -172,30 +177,29 @@ class UtilityPages:
 
         offset = args.get("offset", 0)
 
-        results = []
+        departures: GetArrivalsResponse | GetDeparturesResponse = self.pr4.arrivalBoard(stopID, dateTime, offset) if isArrival else self.pr4.departureBoard(stopID, dateTime, offset)
+        results = [
+            {
+                "lineBgColor": dep.serviceJourney.line.backgroundColor,
+                "lineFgColor": dep.serviceJourney.line.foregroundColor,
+                "lineBorderColor": dep.serviceJourney.line.borderColor,
+                "lineName": dep.serviceJourney.line.shortName,
+                "lineDestination": dep.serviceJourney.origin if isArrival else dep.serviceJourney.directionDetails.shortDirection + (f" via {dep.serviceJourney.directionDetails.via}" if dep.serviceJourney.directionDetails.via else ""), # type: ignore
+                "lineTime": getDepDelay(dep),
+                "linePlatform": dep.stopPoint.platform or "",
+                "detailsReference": dep.detailsReference
+            } for dep in departures.results
+        ]
+
         prevHref: str = ""
         nextHref: str = ""
 
-        departures = self.resep.arrivalBoard(stopID, dateTime, offset) if isArrival else self.resep.departureBoard(stopID, dateTime, offset)
-        results: list[dict[str,str]] = [
-            {
-                "lineBgColor": dep["serviceJourney"]["line"]["backgroundColor"],
-                "lineFgColor": dep["serviceJourney"]["line"]["foregroundColor"],
-                "lineBorderColor": dep["serviceJourney"]["line"]["borderColor"],
-                "lineName": dep["serviceJourney"]["line"]["shortName"],
-                "lineDestination": dep["serviceJourney"]["origin"] if isArrival else dep["serviceJourney"]["directionDetails"]["shortDirection"] + (f" via {dep['serviceJourney']['directionDetails']['via']}" if dep["serviceJourney"]["directionDetails"].get("via") else ""),
-                "lineTime": getDepDelay(dep),
-                "linePlatform": dep["stopPoint"].get("platform", ""),
-                "detailsReference": dep["detailsReference"]
-            } for dep in departures["results"]
-        ]
-
-        if prev := departures["links"].get("previous"):
+        if prev := departures.links.previous:
             params = map(lambda x: x.split("="), prev.split("?")[1].split("&"))
             params = {k:v for k,v in params}
             dtime, offset = params["startDateTime"], params.get("offset", 0)
             prevHref = f"/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}{'&arrivals=on' if isArrival else ''}" 
-        if nxt := departures["links"].get("next"):
+        if nxt := departures.links.next:
             params = map(lambda x: x.split("="), nxt.split("?")[1].split("&"))
             params = {k:v for k,v in params}
             dtime, offset = params["startDateTime"], params.get("offset", 0)
@@ -218,11 +222,11 @@ class UtilityPages:
     def simpleStopArrivals(self, args: dict):
         return json.dumps(args)
 
-    def getStyle(self, dep):
-        col = dep.get("line")
-        fg = col.get("foregroundColor")
-        bg = col.get("backgroundColor")
-        border = col.get("borderColor")
+    def getStyle(self, dep: ServiceJourneyDetails) -> str:
+        col = dep.line
+        fg = col.foregroundColor
+        bg = col.backgroundColor
+        border = col.borderColor
         return f'color: {fg}; background-color: {bg}; border: 1px solid {border};'
     
     def depInfo(self, args):
@@ -249,7 +253,7 @@ class UtilityPages:
         # header here
         stops = [(
             f'<tr>'
-            f'<td rowspan="2" style="{self.getStyle(sj)}">{sj["line"]["name"]}</td>'
+            f'<td rowspan="2" style="{self.getStyle(sj)}">{sj["line"]["name"]}</td>' # won't work until updated
             f'<td rowspan="2" style="{self.getStyle(sj)}">{sj["direction"]}</td>'
             f'<td>{stop["stopPoint"]["name"]}</td>'
             f'<td>Ank. {datetime.fromisoformat("".join(stop["plannedArrivalTime"].split(".0000000"))).strftime("%H:%M") if stop.get("plannedArrivalTime") else "-"}</td>'
@@ -276,17 +280,14 @@ class UtilityPages:
         return html
 
     def simpleDepInfo(self, args):
-        ref = args.get("ref")
+        ref: str | None = args.get("ref")
         if not ref:
             return "<a href='/utilities'>Ingen referens</a>"
-        gid = args.get("gid")
-        ad  = args.get("ad")
-        dep = self.resep.request(ref, gid, ank=ad=="a").get("serviceJourneys")
-        if not dep:
+        gid: str = args.get("gid")
+        ad: Literal['a', 'd'] = args.get("ad")
+        departures: list[ServiceJourneyDetails] = self.pr4.request(ref, gid, ank=ad=="a").serviceJourneys
+        if not departures:
             return "<a href='/utilities'>Ingen info<a>"
-
-        # with open("dep.json", "w") as f:
-        #     f.write(json.dumps(dep))
 
         html = (
             '<!DOCTYPE html>\n<html lang="sv">\n<head>\n<meta charset="UTF-8">\n'
@@ -297,35 +298,65 @@ class UtilityPages:
             'table {border-collapse: collapse; border: 1px solid black;}</style>'
             '</head>\n<body style="font-family: sans-serif">\n<table>\n')
         
-        for sj in dep:
+        for sj in departures:
             html += ('<tr>\n'
-                    f'<td colspan="3" style="{self.getStyle(sj)}">{sj["line"]["name"]}</td>'
+                    f'<td colspan="3" style="{self.getStyle(sj)}">{sj.line.name}</td>'
                      '</tr>\n'
                      '<tr>\n'
-                    f'<td colspan="3" style="{self.getStyle(sj)}">{sj["direction"]}</td>'
+                    f'<td colspan="3" style="{self.getStyle(sj)}">{sj.direction}</td>'
                      '</tr>\n')
             stops = [(
                 f'<tr>'
                 f'<td rowspan="2"><a href="/findDepartures'
-                    f'?stopId={stop["stopPoint"]["stopArea"].get("gid")}'
-                    f'&stopName={stop["stopPoint"].get("name")}'
-                    f'&datetime={stop.get("plannedArrivalTime") if stop.get("plannedArrivalTime") else stop.get("plannedDepartureTime")}"'
-                    f'>{stop["stopPoint"].get("name")}</a></td>'
-                f'<td>{getStopDelay(stop, ank=True) if stop.get("plannedArrivalTime") else "-"}</td>'
-                f'<td rowspan="2" >Läge {stop["stopPoint"].get("platform")}</td>'
+                    f'?stopId={stop.stopPoint.stopArea.gid}'
+                    f'&stopName={stop.stopPoint.name}'
+                    f'&datetime={stop.plannedArrivalTime or stop.plannedDepartureTime}"'
+                    f'>{stop.stopPoint.name}</a></td>'
+                f'<td>{getStopDelay(stop, ank=True) if stop.plannedArrivalTime else "-"}</td>'
+                f'<td rowspan="2" >Läge {stop.stopPoint.platform}</td>'
                 f'</tr>'
                 f'<tr>'
-                f'<td>{getStopDelay(stop) if stop.get("plannedDepartureTime") else "-"}</td>'
+                f'<td>{getStopDelay(stop) if stop.plannedDepartureTime else "-"}</td>'
                 f'</tr>'
-            ) for stop in sj["callsOnServiceJourney"]]
+            ) for stop in sj.callsOnServiceJourney]
             
             html += "\n".join(stops)
         html += "\n</table>"
 
         html += f'\n<a href="/map?ref={ref}&gid={gid}&ad={ad}">Karta</a>'
         html += "\n</body>\n</html>"
+
+        ## ----------------------
+        lines = []
+        for sj in departures:
+
+            stops = [{
+                "stopID": stop.stopPoint.stopArea.gid,
+                "stopName": stop.stopPoint.name,
+                "arrivalTime": getStopDelay(stop, ank=True) if stop.plannedArrivalTime else "-",
+                "departureTime": getStopDelay(stop) if stop.plannedDepartureTime else "-",
+                "linkDateTime": stop.plannedArrivalTime or stop.plannedDepartureTime,
+                "platform": stop.stopPoint.platform
+            } for stop in sj.callsOnServiceJourney]
+
+            lines.append({
+                "lineStyle": self.getStyle(sj),
+                "lineName": sj.line.name,
+                "lineDirection": sj.direction,
+                "stops": stops
+            })
+
+        mapRef: str = f"/map?ref={ref}&gid={gid}&ad={ad}"
         
-        return html
+        # Generate html using jinja2
+        env = Environment(loader=FileSystemLoader("templates"))
+        template = env.get_template("util_line.html.j2")
+
+        return template.render(
+            deps = lines,
+            mapRef = mapRef
+        )
+
 
     def routemap(self, args):
         ref = args.get("ref")

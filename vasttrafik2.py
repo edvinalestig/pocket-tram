@@ -5,7 +5,9 @@ import requests
 from requests import Response
 from requests_futures.sessions import FuturesSession
 
-from models.PR4.DeparturesAndArrivals import GetDeparturesResponse, GetArrivalsResponse
+from models.PR4.DeparturesAndArrivals import GetDeparturesResponse, GetArrivalsResponse, DepartureDetails
+import models.PR4.Positions as PR4Positions
+import models.PR4.Locations as PR4Locations
 import models.TrafficSituations.TrafficSituations as TSModels
 from PTClasses import StopReq
 
@@ -84,12 +86,12 @@ class PR4():
         self.auth = auth
 
 
-    def locations_by_text(self, name: str) -> dict:
+    def locations_by_text(self, name: str) -> PR4Locations.GetLocationsResponse:
         header = {"Authorization": self.auth.token}
         url = "https://ext-api.vasttrafik.se/pr/v4/locations/by-text"
 
         response = requests.get(url, headers=header, params={"types":["stoparea"], "q": name})
-        return self.auth.checkResponse(response).json()
+        return PR4Locations.GetLocationsResponse.model_validate_json(self.auth.checkResponse(response).text)
 
 
     def positions(self, 
@@ -100,7 +102,7 @@ class PR4():
                   detailsReferences: list[str] = [], 
                   lineDesignations: list[str] = [], 
                   limit: int = 100
-                  ) -> list[dict[str,str | float | dict[str,str | bool] | list[dict[str,str]]]]: 
+                  ) -> list[PR4Positions.JourneyPosition]: 
         if not 1 <= limit <= 200: raise ValueError("Limit must be between 1 and 200")
 
         header = {"Authorization": self.auth.token}
@@ -114,8 +116,8 @@ class PR4():
             "detailsReferences": detailsReferences,
             "lineDesignations": lineDesignations
         }
-        response = requests.get(url, headers=header, params=params)
-        return self.auth.checkResponse(response).json()
+        response: Response = requests.get(url, headers=header, params=params)
+        return PR4Positions.JourneyPositionList.model_validate_json(self.auth.checkResponse(response).text).root
 
 
     def departureBoard(self, gid: str, date_time: datetime, offset: int = 0) -> GetDeparturesResponse:
@@ -168,13 +170,13 @@ class PR4():
         return GetArrivalsResponse(**self.auth.checkResponse(response).json())
 
 
-    def request(self, ref: str, gid: str, ank: bool, geo: bool = False):
+    def request(self, ref: str, gid: str, ank: bool, geo: bool = False) -> DepartureDetails:
         base_url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
         url = f"{base_url}/{gid}/{'arrivals' if ank else 'departures'}/{ref}/details?includes=servicejourneycalls"
         if geo: url += "&includes=servicejourneycoordinates"
         header = {"Authorization": self.auth.token}
-        response = requests.get(url, headers=header)
-        return self.auth.checkResponse(response).json()
+        response: Response = requests.get(url, headers=header)
+        return DepartureDetails.model_validate_json(self.auth.checkResponse(response).text)
 
 
 class TrafficSituations():

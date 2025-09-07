@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avgångar</title>
+    <style>
+        td, tr {margin: 0px; padding-left: 5px; padding-right: 5px;}
+        tr:nth-of-type(even) {border-bottom: 1px solid black;}
+        table {border-collapse: collapse; border: 1px solid black;}
+    </style>
+</head>
+<body style="font-family: sans-serif">
+    <table>
+    {% for sj in deps %}
+        <tr>
+            <td colspan="3" style="{{ sj.lineStyle }}">{{ sj.lineName }}</td>
+        </tr>
+        <tr>
+            <td colspan="3" style="{{ sj.lineStyle }}">{{ sj.lineDirection }}</td>
+        </tr>
+        {% for stop in sj.stops %}
+            <tr>
+                <td rowspan="2">
+                    <a href="/findDepartures?stopId={{ stop.stopID }}&stopName={{ stop.stopName }}&datetime={{ stop.linkDateTime }}">
+                        {{ stop.stopName }}
+                    </a>
+                </td>
+                <td>
+                    {{ stop.arrivalTime }}
+                </td>
+                <td rowspan="2">Läge {{ stop.platform }}</td>
+            </tr>
+            <tr>
+                <td>
+                    {{ stop.departureTime }}
+                </td>
+            </tr>
+        {% endfor %}
+    {% endfor %}
+    </table>
+    <a href="{{ mapRef }}">Karta</a>
+</body>
+</html>
