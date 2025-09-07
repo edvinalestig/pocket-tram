@@ -36,7 +36,7 @@ def getStopDelay(stop: CallDetails, ank=False) -> str:
         return plannedTime.strftime("%H:%M X")
 
     # Check if real time info is available
-    if not stop.estimatedArrivalTime and not stop.estimatedDepartureTime:
+    if not stop.estimatedArrivalTime if ank else not stop.estimatedDepartureTime:
         return (stop.plannedArrivalTime if ank else stop.plannedDepartureTime).strftime("%H:%M") # type: ignore
 
     realTime: datetime = stop.estimatedArrivalTime if ank else stop.estimatedDepartureTime # type: ignore
@@ -238,6 +238,8 @@ class UtilityPages:
         dep = self.resep.request(ref, gid, ank=ad=="a").get("serviceJourneys")
         if not dep:
             return "<a href='/utilities'>Ingen info<a>"
+
+        return "<a href='/utilities'>Temporärt trasigt</a><br>"
 
         # with open("dep.json", "w") as f:
         #     f.write(json.dumps(dep))
