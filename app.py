@@ -1,6 +1,7 @@
 from flask import Flask, request, send_file
 from jinja2 import Environment, FileSystemLoader
 from vasttrafik import Auth, Reseplaneraren, TrafficSituations
+from vasttrafik2 import Auth as Auth2, PR4
 import json
 import dateutil.tz as tz
 from datetime import datetime, timedelta
@@ -9,7 +10,8 @@ from os import environ
 
 from bridge.bridge import Bridge
 from bridge.bridgeModels import *
-from PTClasses import Stop, StopReq
+from PTClasses import Stop, StopReq, Departure
+from models.PR4.DeparturesAndArrivals import DepartureAPIModel, GetDeparturesResponse
 from utilityPages import UtilityPages
 
 app = Flask(__name__)
@@ -18,6 +20,9 @@ auth = Auth(environ["VTClient"], environ["VTSecret"], "app")
 rp = Reseplaneraren(auth)
 ts = TrafficSituations(auth)
 utilPages = UtilityPages(rp)
+
+auth2 = Auth2(environ["VTClient"], environ["VTSecret"], "app2")
+pr4 = PR4(auth2)
 
 @app.route("/")
 def index():
@@ -72,12 +77,12 @@ def position():
 
 @app.route("/request")
 def req():
-    place = request.args.get("place", "")
-    timeNow = datetime.now(tz.gettz("Europe/Stockholm")).strftime("%H:%M:%S")
+    place: str = request.args.get("place", "")
+    timeNow: str = datetime.now(tz.gettz("Europe/Stockholm")).strftime("%H:%M:%S")
     deps = mapStops(place)
 
     return json.dumps({
-                "stops": {sr.title: dep for (sr,dep) in deps},
+                "stops": {sr.title: [d.model_dump() for d in dep] for (sr,dep) in deps},
                 "ts": getTrafficSituation(place),
                 "time": timeNow
             })
@@ -119,7 +124,7 @@ def bridge():
         lastOpening = lastOpening
     )
 
-def mapStops(place: str) -> list[tuple[StopReq,list]]:
+def mapStops(place: str) -> list[tuple[StopReq,list[Departure]]]:
     match place:
         case "lgh":
             return getDepartures([
@@ -145,14 +150,14 @@ def mapStops(place: str) -> list[tuple[StopReq,list]]:
 
         case "domkyrkan":
             return getDepartures([
-                compileStopReq("Mot Bjurslätts torg", Stop.Domkyrkan, Stop.Bjurslättstorget),
+                compileStopReq("Mot Bjurslätts torg", Stop.Domkyrkan, Stop.BjurslättsTorg),
                 compileStopReq("Mot Kapellplatsen", Stop.Domkyrkan, Stop.Kapellplatsen)
             ])
 
         case "bjurslatt":
             return getDepartures([
-                compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Bjurslättstorget, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["31"]),
-                compileStopReq("Mot Lindholmen", Stop.Bjurslättstorget, Stop.Lindholmen)
+                compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.BjurslättsTorg, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["31"]),
+                compileStopReq("Mot Lindholmen", Stop.BjurslättsTorg, Stop.Lindholmen)
             ])
 
         case "hjalmar":
@@ -173,7 +178,7 @@ def mapStops(place: str) -> list[tuple[StopReq,list]]:
 
         case "lindholmen":
             return getDepartures([
-                compileStopReq("Mot Bjurslätts torg", Stop.Lindholmen, Stop.Bjurslättstorget),
+                compileStopReq("Mot Bjurslätts torg", Stop.Lindholmen, Stop.BjurslättsTorg),
                 compileStopReq("Mot Svingeln", Stop.Lindholmen, Stop.Svingeln, compileFirst=True),
                 compileStopReq("Båt", Stop.Lindholmspiren, Stop.Stenpiren),
             ])
@@ -181,20 +186,19 @@ def mapStops(place: str) -> list[tuple[StopReq,list]]:
         case "brunnsparken":
             return getDepartures([
                 compileStopReq("Mot Chalmers", Stop.Brunnsparken, Stop.Chalmers, excludeLines=["6"]),
-                compileStopReq("Mot Bjurslätts torg", Stop.Brunnsparken, Stop.Bjurslättstorget),
+                compileStopReq("Mot Bjurslätts torg", Stop.Brunnsparken, Stop.BjurslättsTorg),
                 compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Brunnsparken, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.")
             ])
         
         case "wieselgrensplatsen":
             return getDepartures([
-                compileStopReq("Mot Bjurslätts torg", Stop.Wieselgrensplatsen, Stop.Bjurslättstorget, compileFirst=True),
+                compileStopReq("Mot Bjurslätts torg", Stop.Wieselgrensplatsen, Stop.BjurslättsTorg, compileFirst=True),
                 compileStopReq("Mot Wieselgrensgatan", Stop.Wieselgrensplatsen, Stop.Wieselgrensgatan, excludeLines=["25","31"]),
                 compileStopReq("Mot Brunnsparken", Stop.Wieselgrensplatsen, Stop.Brunnsparken, compileFirst=True)
             ])
         
         case _:
-            return []
-            
+            return []      
 
 def compileStopReq(title: str,
                    fr: Stop,
@@ -210,120 +214,105 @@ def compileStopReq(title: str,
     return StopReq(title=title, showCountdown=showCountdown, compileFirst=compileFirst, dest=dest or to.name, excludeLines=excludeLines, excludeDestinations=excludeDestinations, stop=fr, direction=to, startDateTime=timeNow) 
 
 # Takes a list of compiled dicts and returns a list of cleaned results
-def getDepartures(reqList: list[StopReq]) -> list[tuple[StopReq,list]]:
-    responses = rp.asyncDepartureBoards(reqList)
+def getDepartures(reqList: list[StopReq]) -> list[tuple[StopReq,list[Departure]]]:
+    responses = pr4.asyncDepartureBoards(reqList)
     return [clean(*resp) for resp in responses]
 
-# obj: Object received from VT API
-def clean(sr: StopReq, obj: dict) -> tuple[StopReq, list]:
-    deps = obj.get("results")
+def clean(sr: StopReq, resp: GetDeparturesResponse) -> tuple[StopReq, list[Departure]]:
+    deps: list[DepartureAPIModel] = resp.results
 
-    if deps == None:
+    if deps == None or deps == []:
         # No departures found
         return (sr, [])
 
-    firstDeps = {
-        "line": "🚋",
-        "dest": sr.dest,
-        "time": [],
-        "fgColor": "blue",
-        "bgColor": "white"
-    }
+    firstDeps = Departure(
+        line="🚋",
+        dest=sr.dest,
+        time=[],
+        fgColor="blue",
+        bgColor="white"
+    )
 
-    outArr = []
+    outArr: list[Departure] = []
     for dep in deps:
-        sj = dep.get("serviceJourney")
-        line = sj.get("line").get("shortName")
+        line: str = dep.serviceJourney.line.shortName or "?"
         if line in sr.excludeLines: continue
 
-        dest = sj.get("directionDetails").get("shortDirection").replace("Brantingsplatsen", "Brantingspl.")
+        dest: str = (dep.serviceJourney.directionDetails.shortDirection or "?").replace("Brantingsplatsen", "Brantingspl.")
         if dest in sr.excludeDestinations: continue
 
-        ctdown = calculateCountdown(dep)
+        ctdown: str | int = calculateCountdown(dep)
 
         # If the time left or the time+delay should be shown
+        time: str | int
         if sr.showCountdown:
             time = ctdown
         else:
-            t = datetime.fromisoformat("".join(dep.get("plannedTime").split(".0000000")))
-            time = t.strftime("%H:%M") + getDelay(dep)
+            time = dep.plannedTime.strftime("%H:%M") + getDelay(dep)
 
         i = 0
         while i < len(outArr):
             # Check if that line & destination is already present.
             # Put all departures in one list
-            if outArr[i].get("line") == line and outArr[i].get("dest") == dest:
-                outArr[i]["time"].append(time)
+            if outArr[i].line == line and outArr[i].dest == dest:
+                outArr[i].time.append(time)
                 break
             i += 1
         else:
             # The line & destination is not in the list
-            vitals = {
-                "line": line,
-                "dest": dest,
-                "time": [time],
-                "bgColor": sj.get("line").get("backgroundColor"),
-                "fgColor": sj.get("line").get("foregroundColor")
-            }
-            outArr.append(vitals)
+            outArr.append(Departure(
+                line=line,
+                dest=dest,
+                time=[time],
+                bgColor=dep.serviceJourney.line.backgroundColor or "blue",
+                fgColor=dep.serviceJourney.line.foregroundColor or "white"
+            ))
         
         if (type(ctdown) == int) or (ctdown == "Nu"):
             # Add countdowns to a list of all departures toward a stop if 
             # they aren't cancelled or not having realtime info.
-            firstDeps["time"].append(ctdown)
+            firstDeps.time.append(ctdown)
 
     if sr.compileFirst:
         # All departures toward a stop
         # Get only the first three after sorting
-        if len(firstDeps["time"]) > 0:
-            sort = sortDepartures([firstDeps])[0]
-            sort["time"] = sort["time"][:3]
+        if len(firstDeps.time) > 0:
+            sort: Departure = sortDepartures([firstDeps])[0]
+            sort.time = sort.time[:3]
             outArr.append(sort)
 
     return (sr, sortDepartures(outArr))
 
-def getDelay(dep: dict) -> str:
-    if dep.get("isCancelled"):
+def getDelay(dep: DepartureAPIModel) -> str:
+    if dep.isCancelled:
         return " X"
 
     # Check if real time info is available
-    tttime = dep.get("plannedTime", "")
-    rttime = dep.get("estimatedTime")
-    if rttime == None:
+    if dep.estimatedTime is None:
         return ""
 
-    ttdt = datetime.fromisoformat("".join(tttime.split(".0000000")))
-    rtdt = datetime.fromisoformat("".join(rttime.split(".0000000")))
-    delta = rtdt - ttdt
+    delta: timedelta = dep.estimatedTime - dep.plannedTime
 
     # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
-    delay = delta.days * 1440 + math.floor(delta.seconds/60)
+    delay: int = delta.days * 1440 + math.floor(delta.seconds/60)
 
     if delay >= 0:
         return f"+{delay}"
     else:
         return str(delay)
 
-def calculateCountdown(departure: dict) -> str | int:
-    if departure.get("isCancelled"):
+def calculateCountdown(departure: DepartureAPIModel) -> str | int:
+    if departure.isCancelled:
         return "❌"
 
-    # Check if real time info is available
-    dTime = departure.get("estimatedTime")
-    if dTime == None:
-        realtime = False
-        dTime = departure.get("plannedTime", "")
-    else:
-        realtime = True
-
-    depTime = datetime.fromisoformat("".join(dTime.split(".0000000")))
-    timeNow = datetime.now(tz.gettz("Europe/Stockholm"))
+    depTime: datetime = departure.estimatedOtherwisePlannedTime
+    realtime: bool = departure.estimatedTime is not None
+    timeNow: datetime = datetime.now(tz.gettz("Europe/Stockholm"))
 
     # Time left:
-    countdown = depTime - timeNow
+    delta: timedelta = depTime - timeNow
     # 1440 minutes in a day. If it's 1 min early then it says days=-1, minutes=1439.
-    countdown = countdown.days * 1440 + math.ceil(countdown.seconds/60)
-
+    countdown: int = delta.days * 1440 + math.ceil(delta.seconds/60)
 
     if realtime:
         if countdown <= 0:
@@ -333,13 +322,13 @@ def calculateCountdown(departure: dict) -> str | int:
     else:
         return f'Ca {countdown}'
 
-def sortDepartures(arr):
+def sortDepartures(departures: list[Departure]) -> list[Departure]:
     # Get the departures in the correct order in case the one behind is actually in front
-    for i, dep in enumerate(arr):
+    for i, dep in enumerate(departures):
         # Do not sort the list if there are strings in it (except 'Nu'), they  
         # might be "00:12+1" and "23:56-2" which would then be swapped.
         skip = False
-        for t in dep["time"]:
+        for t in dep.time:
             if type(t) == str and t != "Nu":
                 skip = True
                 break
@@ -347,14 +336,14 @@ def sortDepartures(arr):
             continue
 
         try:
-            arr[i]["time"] = sorted(dep["time"], key=lambda t: prioTimes(t))
+            departures[i].time = sorted(dep.time, key=lambda t: prioTimes(t))
         except TypeError:
             # One departure was a string and it doesn't like mixing strings and numbers
             pass
 
     # Sort firstly by line number and secondly by destination
-    sortedByDestination = sorted(arr, key=lambda dep: dep["dest"])
-    sortedByLine = sorted(sortedByDestination, key=lambda dep: prioritise(dep["line"]))
+    sortedByDestination: list[Departure] = sorted(departures, key=lambda dep: dep.dest)
+    sortedByLine: list[Departure] = sorted(sortedByDestination, key=lambda dep: prioritise(dep.line))
     return sortedByLine
 
 def prioritise(value: str) -> str:
@@ -376,21 +365,18 @@ def prioTimes(t: int | str) -> int:
 
 def getTrafficSituation(place: str) -> list[dict[str, str]]:
     # Stops to check for each place
-    defaultStops: list[Stop] = [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.Bjurslättstorget]
+    defaultStops: list[Stop] = [Stop.Brunnsparken, Stop.Domkyrkan, Stop.Chalmers, Stop.HjalmarBrantingsplatsen, Stop.BjurslättsTorg]
     placeStops: dict[str, list[Stop]] = {
         "lgh":          [Stop.UlleviNorra, Stop.Svingeln, Stop.Chalmers, Stop.HjalmarBrantingsplatsen],
         "chalmers":     [Stop.Chalmers, Stop.UlleviNorra, Stop.Domkyrkan],
         "huset":        [Stop.NyaVarvetsTorg, Stop.NyaVarvsallén, Stop.Järntorget],
-        "lindholmen":   [Stop.Lindholmen, Stop.Lindholmspiren, Stop.Svingeln, Stop.Stenpiren, Stop.Bjurslättstorget],
+        "lindholmen":   [Stop.Lindholmen, Stop.Lindholmspiren, Stop.Svingeln, Stop.Stenpiren, Stop.BjurslättsTorg],
         "jt":           [Stop.Järntorget, Stop.Kungssten, Stop.NyaVarvetsTorg, Stop.NyaVarvsallén, Stop.Chalmers, Stop.UlleviNorra, Stop.HjalmarBrantingsplatsen],
         "hjalmar":      defaultStops + [Stop.Svingeln]
     }
 
     traffic = [ts.stoparea(stop.value) for stop in placeStops.get(place, defaultStops)]
     arr = [x for xs in traffic for x in xs] # Flatten list
-    
-    # with open("ts.json", "w") as f:
-    #     f.write(json.dumps(traffic))
 
     outarr: list[dict[str,str]] = []
     for situation in arr:

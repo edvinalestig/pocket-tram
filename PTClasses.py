@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class Stop(Enum):
     """Enum of stop GIDs"""
 
-    Bjurslättstorget        = 9021014001475000
+    BjurslättsTorg        = 9021014001475000
     Brunnsparken            = 9021014001760000
     Centralstationen        = 9021014001950000
     Chalmers                = 9021014001960000
@@ -59,3 +59,10 @@ class StopReq(BaseModel):
             "startDateTime": self.startDateTime.astimezone(timezone.utc).isoformat(),
             "limit": 100
         }
+
+class Departure(BaseModel):
+    line: str
+    dest: str
+    time: list[int | str]
+    bgColor: str
+    fgColor: str

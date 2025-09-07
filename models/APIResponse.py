@@ -1,0 +1,2 @@
+class APIResponseModel:
+    pass

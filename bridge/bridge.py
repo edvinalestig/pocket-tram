@@ -18,22 +18,22 @@ class Bridge:
     def bridgeMessages(self) -> MessageModel:
         r: Response = requests.get(self._baseURL + "bridgemessages", headers=self._headers)
         r.raise_for_status()
-        return MessageModel(**r.json())
+        return MessageModel.model_validate_json(r.text)
     
     def riverSignals(self) -> SignalsModel:
         r: Response = requests.get(self._baseURL + "riversignals", headers=self._headers)
         r.raise_for_status()
-        return SignalsModel(**r.json())
+        return SignalsModel.model_validate_json(r.text)
     
     def roadSignals(self) -> SignalsModel:
         r: Response = requests.get(self._baseURL + "roadsignals", headers=self._headers)
         r.raise_for_status()
-        return SignalsModel(**r.json())
+        return SignalsModel.model_validate_json(r.text)
     
     def sharedPathwaySignals(self) -> SignalsModel:
         r: Response = requests.get(self._baseURL + "sharedpathwaysignals", headers=self._headers)
         r.raise_for_status()
-        return SignalsModel(**r.json())
+        return SignalsModel.model_validate_json(r.text)
     
     def historySignals(self, fromDate: str, toDate: str, audienceName: AudienceEnum) -> list[HistorySignalsModel]:
         body: dict[str,str] = {
