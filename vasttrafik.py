@@ -141,14 +141,14 @@ class PR4():
         url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
 
         # Start a session for the async requests
-        session = FuturesSession()
         reqs = []
-        for req in request_list:
-            # Send the requests
-            future = session.get(f"{url}/{req.stop.value}/departures", headers=header, params=req.getParams())
-            reqs.append((req,future))
+        with FuturesSession() as session:
+            for req in request_list:
+                # Send the requests
+                future = session.get(f"{url}/{req.stop.value}/departures", headers=header, params=req.getParams())
+                reqs.append((req,future))
 
-        responses = [(sr,req.result()) for (sr,req) in reqs]
+            responses = [(sr,req.result()) for (sr,req) in reqs]
 
         # Check for errors
         return [(s, GetDeparturesResponse.model_validate_json(r.text)) for (s,r) in self.auth.checkResponses(responses)]
@@ -227,14 +227,14 @@ class TrafficSituations():
         url = f"{self.url}/stoparea"
 
         # Start a session for the async requests
-        session = FuturesSession()
         reqs = []
-        for gid in gid_list:
-            # Send the requests
-            future = session.get(f"{url}/{gid}", headers=header)
-            reqs.append((None,future))
+        with FuturesSession() as session:
+            for gid in gid_list:
+                # Send the requests
+                future = session.get(f"{url}/{gid}", headers=header)
+                reqs.append((None,future))
 
-        responses = [(_,req.result()) for (_,req) in reqs]
+            responses = [(_,req.result()) for (_,req) in reqs]
 
         # Check for errors
         trafficSituations = map(lambda r: TSModels.TrafficSituationList.model_validate_json(r[1].text).root, self.auth.checkResponses(responses))
