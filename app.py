@@ -5,6 +5,7 @@ import json
 import dateutil.tz as tz
 from datetime import datetime, timedelta
 import math
+import multiprocessing as mp
 from os import environ
 
 from bridge.bridge import getAllBridgeData
@@ -77,11 +78,16 @@ def position():
 def req():
     place: str = request.args.get("place", "")
     timeNow: str = datetime.now(tz.gettz("Europe/Stockholm")).strftime("%H:%M:%S")
-    deps = mapStops(place)
+
+    with mp.Pool(processes=2) as pool:
+        depsAR = pool.apply_async(mapStops, args=(place,))
+        tsAR = pool.apply_async(getTrafficSituation, args=(place,))
+        deps = depsAR.get()
+        ts = tsAR.get()
 
     return json.dumps({
                 "stops": {sr.title: [d.model_dump() for d in dep] for (sr,dep) in deps},
-                "ts": getTrafficSituation(place),
+                "ts": ts,
                 "time": timeNow
             })
 
@@ -363,11 +369,10 @@ def getTrafficSituation(place: str) -> list[dict[str, str]]:
         "hjalmar":      defaultStops + [Stop.Svingeln]
     }
 
-    traffic: list[list[TrafficSituation]] = [ts.stoparea(stop.value) for stop in placeStops.get(place, defaultStops)]
-    arr: list[TrafficSituation] = [x for xs in traffic for x in xs] # Flatten list
+    traffic: list[TrafficSituation] = ts.asyncStoparea([stop.value for stop in placeStops.get(place, defaultStops)])
 
     outarr: list[dict[str,str]] = []
-    for situation in arr:
+    for situation in traffic:
         now: datetime = datetime.now(tz.UTC)
         # Add it to the output array only if the disruption has started
         if situation.startTime <= now:

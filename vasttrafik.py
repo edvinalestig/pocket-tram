@@ -220,6 +220,25 @@ class TrafficSituations():
     def stoparea(self, gid) -> list[TSModels.TrafficSituation]:
         resp: Response = self.__get(self.url + f'/stoparea/{gid}')
         return TSModels.TrafficSituationList.model_validate_json(resp.text).root
+    
+
+    def asyncStoparea(self, gid_list: list[int]) -> list[TSModels.TrafficSituation]:
+        header = {"Authorization": self.auth.token}
+        url = f"{self.url}/stoparea"
+
+        # Start a session for the async requests
+        session = FuturesSession()
+        reqs = []
+        for gid in gid_list:
+            # Send the requests
+            future = session.get(f"{url}/{gid}", headers=header)
+            reqs.append((None,future))
+
+        responses = [(_,req.result()) for (_,req) in reqs]
+
+        # Check for errors
+        trafficSituations = map(lambda r: TSModels.TrafficSituationList.model_validate_json(r[1].text).root, self.auth.checkResponses(responses))
+        return [item for sublist in trafficSituations for item in sublist]
 
 
 if __name__ == "__main__":
