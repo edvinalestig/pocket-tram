@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pydantic import BaseModel, RootModel
 from enum import Enum
 from datetime import datetime
@@ -28,3 +29,11 @@ class HistorySignalsModel(BaseModel):
     ETag: str
 
 HistorySignalsModelList = RootModel[list[HistorySignalsModel]]
+
+@dataclass
+class AllBridgeDataModel:
+    message: MessageModel
+    boat: SignalsModel
+    car: SignalsModel
+    gc: SignalsModel
+    openings: list[HistorySignalsModel]

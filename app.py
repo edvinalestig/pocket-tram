@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import math
 from os import environ
 
-from bridge.bridge import Bridge
+from bridge.bridge import getAllBridgeData
 from bridge.bridgeModels import *
 from PTClasses import Stop, StopReq, Departure
 from models.PR4.DeparturesAndArrivals import DepartureAPIModel, GetDeparturesResponse
@@ -87,25 +87,15 @@ def req():
 
 @app.route("/bridge")
 def bridge():
-    bridge = Bridge()
-    car: StatusEnum = bridge.roadSignals().status
-    gc: StatusEnum = bridge.sharedPathwaySignals().status
-    boat: StatusEnum = bridge.riverSignals().status
-    message: MessageModel = bridge.bridgeMessages()
+    # Get data asynchronously
+    allData: AllBridgeDataModel = getAllBridgeData()
+    allData.openings.sort(reverse=True, key=lambda x: x.Timestamp)
 
-    now: datetime = datetime.now(tz.UTC)
-    openings: list[HistorySignalsModel] = bridge.historySignals(
-        fromDate=(now - timedelta(days=1)).strftime("%Y-%m-%d"),
-        toDate=(now + timedelta(days=1)).strftime("%Y-%m-%d"),
-        audienceName=AudienceEnum.GC
-    )
-    openings.sort(reverse=True, key=lambda x: x.Timestamp)
-    
-    lastChange: str = openings[0].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%H:%M")
-    penultimateChange: str = openings[1].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
+    lastChange: str = allData.openings[0].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%H:%M")
+    penultimateChange: str = allData.openings[1].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
 
     lastOpening: str
-    if gc == StatusEnum.Closed:
+    if allData.gc == StatusEnum.Closed:
         lastOpening = f"Nu (sedan {lastChange})"
     else:
         lastOpening = f"{penultimateChange} - {lastChange}"
@@ -115,10 +105,10 @@ def bridge():
     template = env.get_template("bridge.html.j2")
 
     return template.render(
-        car = car.value,
-        gc = gc.value,
-        boat = boat.value,
-        message = "-" if message.message == "" else f'{message.message} (utfärdat {message.timeStamp.strftime("%d %b %Y kl. %H:%M")})',
+        car = allData.car.status.value,
+        gc = allData.gc.status.value,
+        boat = allData.boat.status.value,
+        message = "-" if allData.message.message == "" else f'{allData.message.message} (utfärdat {allData.message.timeStamp.strftime("%d %b %Y kl. %H:%M")})',
         lastOpening = lastOpening
     )
 

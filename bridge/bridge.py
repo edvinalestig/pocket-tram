@@ -1,7 +1,11 @@
+from datetime import timedelta
+import dateutil.tz as tz
 import os
+import multiprocessing as mp
 import requests
 from requests import Response
 from bridge.bridgeModels import *
+from bridge.bridgeModels import AllBridgeDataModel
 
 class Bridge:
     _headers: dict[str,str]
@@ -43,3 +47,24 @@ class Bridge:
         r: Response = requests.post(self._baseURL + "historysignals", json=body, headers=self._headers)
         r.raise_for_status()
         return HistorySignalsModelList.model_validate_json(r.json()).root
+
+def getAllBridgeData() -> AllBridgeDataModel:
+    bridge = Bridge()
+    with mp.Pool(processes=4) as pool:
+        now: datetime = datetime.now(tz.UTC)
+        fromDate: str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        toDate: str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+        history_signals = pool.apply_async(bridge.historySignals, args=(fromDate, toDate, AudienceEnum.GC))
+
+        messages = pool.apply_async(bridge.bridgeMessages)
+        river_signals = pool.apply_async(bridge.riverSignals)
+        road_signals = pool.apply_async(bridge.roadSignals)
+        shared_pathway_signals = pool.apply_async(bridge.sharedPathwaySignals)
+
+        return AllBridgeDataModel(
+            message=messages.get(),
+            boat=river_signals.get(),
+            car=road_signals.get(),
+            gc=shared_pathway_signals.get(),
+            openings=history_signals.get()
+        )
