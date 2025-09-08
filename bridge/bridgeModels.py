@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 from enum import Enum
 from datetime import datetime
 
@@ -26,3 +26,5 @@ class HistorySignalsModel(BaseModel):
     RowKey: str
     Timestamp: datetime
     ETag: str
+
+HistorySignalsModelList = RootModel[list[HistorySignalsModel]]

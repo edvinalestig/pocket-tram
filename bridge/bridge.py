@@ -1,4 +1,3 @@
-import json
 import os
 import requests
 from requests import Response
@@ -43,4 +42,4 @@ class Bridge:
         }
         r: Response = requests.post(self._baseURL + "historysignals", json=body, headers=self._headers)
         r.raise_for_status()
-        return [HistorySignalsModel(**entry) for entry in json.loads(r.json())]
+        return HistorySignalsModelList.model_validate_json(r.json()).root
