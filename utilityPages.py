@@ -4,13 +4,13 @@ import json
 from datetime import datetime, timedelta
 from dateutil.tz import tz
 import math
+from jinja2 import Environment, FileSystemLoader
+
 from PTClasses import RouteMapData
 from models.PR4.DeparturesAndArrivals import CallDetails, GetArrivalsResponse, GetDeparturesResponse, ArrivalsAPIModel, DepartureAPIModel, ServiceJourneyDetails
 from models.PR4.Locations import Location
 from models.PR4.Positions import JourneyPosition
-from jinja2 import Environment, FileSystemLoader
-
-from vasttrafik2 import PR4
+from vasttrafik import PR4
 
 def getDepDelay(dep: ArrivalsAPIModel | DepartureAPIModel, ank=False) -> str:
     if dep.isCancelled:

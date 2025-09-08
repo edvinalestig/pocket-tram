@@ -1,6 +1,6 @@
 from flask import Flask, request, send_file
 from jinja2 import Environment, FileSystemLoader
-from vasttrafik2 import Auth, PR4, TrafficSituations
+from vasttrafik import Auth, PR4, TrafficSituations
 import json
 import dateutil.tz as tz
 from datetime import datetime, timedelta
