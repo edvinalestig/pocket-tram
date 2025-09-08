@@ -4,9 +4,10 @@ import json
 from datetime import datetime, timedelta
 from dateutil.tz import tz
 import math
+from PTClasses import RouteMapData
 from models.PR4.DeparturesAndArrivals import CallDetails, GetArrivalsResponse, GetDeparturesResponse, ArrivalsAPIModel, DepartureAPIModel, ServiceJourneyDetails
 from models.PR4.Locations import Location
-from vasttrafik import Reseplaneraren
+from models.PR4.Positions import JourneyPosition
 from jinja2 import Environment, FileSystemLoader
 
 from vasttrafik2 import PR4
@@ -53,9 +54,8 @@ def getStopDelay(stop: CallDetails, ank=False) -> str:
 ###############################
 
 class UtilityPages:
-    def __init__(self, pr4: PR4, resep: Reseplaneraren) -> None:
+    def __init__(self, pr4: PR4) -> None:
         self.pr4: PR4 = pr4
-        self.resep = resep
 
     def mainPage(self):
         return send_file("static/util.html")
@@ -230,6 +230,7 @@ class UtilityPages:
         return f'color: {fg}; background-color: {bg}; border: 1px solid {border};'
     
     def depInfo(self, args):
+        return "<a href='/utilities'>Temporärt trasigt</a><br>"
         ref = args.get("ref")
         if not ref:
             return "<a href='/utilities'>Ingen referens</a>"
@@ -239,7 +240,6 @@ class UtilityPages:
         if not dep:
             return "<a href='/utilities'>Ingen info<a>"
 
-        return "<a href='/utilities'>Temporärt trasigt</a><br>"
 
         # with open("dep.json", "w") as f:
         #     f.write(json.dumps(dep))
@@ -365,12 +365,12 @@ class UtilityPages:
         if not ref:
             return "<a href='/utilities'>Ingen referens</a>"
         gid = args.get("gid")
-        ad  = args.get("ad")
-        geo = self.resep.request(ref, gid, ank=ad=="a", geo=True).get("serviceJourneys")
-        positions = self.position(args)
-        return {"geo": geo, "positions": positions}
-    
-    def position(self, args):
+        ad: Literal['a', 'd'] = args.get("ad")
+        geo: list[ServiceJourneyDetails] = self.pr4.request(ref, gid, ank=ad=="a", geo=True).serviceJourneys
+        positions: list[JourneyPosition] = self.position(args)
+        return RouteMapData(geo=geo, positions=positions).model_dump_json()
+
+    def position(self, args) -> list[JourneyPosition]:
         # Covers the whole of VGR
         lowerLeftLat = 57.270
         lowerLeftLon = 11.146
@@ -380,9 +380,9 @@ class UtilityPages:
         line = args.getlist("line")
         if not ref and not line: return []
         if ref:
-            return self.resep.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, [ref])
+            return self.pr4.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, [ref])
         else:
-            return self.resep.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, lineDesignations=line)
+            return self.pr4.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, lineDesignations=line)
 
 
 if __name__ == "__main__":

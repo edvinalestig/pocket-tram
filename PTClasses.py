@@ -2,6 +2,9 @@ from enum import Enum
 from datetime import datetime, timezone
 from pydantic import BaseModel
 
+from models.PR4.DeparturesAndArrivals import ServiceJourneyDetails
+from models.PR4.Positions import JourneyPosition
+
 # Stop IDs (GID)
 class Stop(Enum):
     """Enum of stop GIDs"""
@@ -66,3 +69,7 @@ class Departure(BaseModel):
     time: list[int | str]
     bgColor: str
     fgColor: str
+
+class RouteMapData(BaseModel):
+    geo: list[ServiceJourneyDetails]
+    positions: list[JourneyPosition]

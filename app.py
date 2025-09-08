@@ -1,7 +1,6 @@
 from flask import Flask, request, send_file
 from jinja2 import Environment, FileSystemLoader
-from vasttrafik import Auth, Reseplaneraren
-from vasttrafik2 import Auth as Auth2, PR4, TrafficSituations
+from vasttrafik2 import Auth, PR4, TrafficSituations
 import json
 import dateutil.tz as tz
 from datetime import datetime, timedelta
@@ -12,18 +11,16 @@ from bridge.bridge import Bridge
 from bridge.bridgeModels import *
 from PTClasses import Stop, StopReq, Departure
 from models.PR4.DeparturesAndArrivals import DepartureAPIModel, GetDeparturesResponse
+from models.PR4.Positions import JourneyPositionList
 from models.TrafficSituations.TrafficSituations import TrafficSituation
 from utilityPages import UtilityPages
 
 app = Flask(__name__)
 
-auth = Auth(environ["VTClient"], environ["VTSecret"], "app")
-rp = Reseplaneraren(auth)
-
-auth2 = Auth2(environ["VTClient"], environ["VTSecret"], "app2")
-pr4 = PR4(auth2)
-ts = TrafficSituations(auth2)
-utilPages = UtilityPages(pr4, rp)
+auth = Auth(environ["VTClient"], environ["VTSecret"], "app2")
+pr4 = PR4(auth)
+ts = TrafficSituations(auth)
+utilPages = UtilityPages(pr4)
 
 @app.route("/")
 def index():
@@ -74,7 +71,7 @@ def routedata():
 
 @app.route("/position")
 def position():
-    return utilPages.position(request.args)
+    return JourneyPositionList(utilPages.position(request.args)).model_dump_json()
 
 @app.route("/request")
 def req():
