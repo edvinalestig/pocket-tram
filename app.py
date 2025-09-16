@@ -101,7 +101,7 @@ def bridge():
     penultimateChange: str = allData.openings[1].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
 
     lastOpening: str
-    if allData.gc == StatusEnum.Closed:
+    if allData.gc.status == StatusEnum.Closed or allData.car.status == StatusEnum.Closed:
         lastOpening = f"Nu (sedan {lastChange})"
     else:
         lastOpening = f"{penultimateChange} - {lastChange}"
