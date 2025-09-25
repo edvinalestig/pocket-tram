@@ -9,7 +9,8 @@ from models.PR4.Positions import JourneyPosition
 class Stop(Enum):
     """Enum of stop GIDs"""
 
-    BjurslättsTorg        = 9021014001475000
+    Bergsprängaregatan      = 9021014001390000
+    BjurslättsTorg          = 9021014001475000
     Brunnsparken            = 9021014001760000
     Centralstationen        = 9021014001950000
     Chalmers                = 9021014001960000

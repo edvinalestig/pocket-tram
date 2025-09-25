@@ -151,7 +151,8 @@ def mapStops(place: str) -> list[tuple[StopReq,list[Departure]]]:
         case "bjurslatt":
             return getDepartures([
                 compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.BjurslättsTorg, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.", excludeLines=["31"]),
-                compileStopReq("Mot Lindholmen", Stop.BjurslättsTorg, Stop.Lindholmen)
+                compileStopReq("Mot Lindholmen", Stop.BjurslättsTorg, Stop.Lindholmen),
+                compileStopReq("Wieselgrensgatan", Stop.Wieselgrensgatan, Stop.HjalmarBrantingsplatsen, excludeLines=["25","31"])
             ])
 
         case "hjalmar":
@@ -180,6 +181,7 @@ def mapStops(place: str) -> list[tuple[StopReq,list[Departure]]]:
         case "brunnsparken":
             return getDepartures([
                 compileStopReq("Mot Chalmers", Stop.Brunnsparken, Stop.Chalmers, excludeLines=["6"]),
+                compileStopReq("Mot Bergsprängaregatan", Stop.Brunnsparken, Stop.Bergsprängaregatan),
                 compileStopReq("Mot Bjurslätts torg", Stop.Brunnsparken, Stop.BjurslättsTorg),
                 compileStopReq("Mot Hjalmar Brantingsplatsen", Stop.Brunnsparken, Stop.HjalmarBrantingsplatsen, compileFirst=True, dest="Hjalmar Brantingspl.")
             ])
