@@ -28,8 +28,8 @@ class Line(BaseModel):
     defaultTransportModeCode: str
     transportAuthorityCode: str
     transportAuthorityName: str
-    textColor: str
-    backgroundColor: str
+    textColor: str | None
+    backgroundColor: str | None
     directions: list[Direction]
     municipalities: list[Municipality]
     affectedStopPointGids: list[str]
