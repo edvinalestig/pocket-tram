@@ -310,7 +310,7 @@ class UtilityPages:
             stops = [(
                 f'<tr>'
                 f'<td rowspan="2"><a href="/findDepartures'
-                    f'?stopId={stop.stopPoint.stopArea.gid}'
+                    f'?stopId={stop.stopPoint.stopArea.gid if stop.stopPoint.stopArea is not None else ""}'
                     f'&stopName={stop.stopPoint.name}'
                     f'&datetime={stop.plannedArrivalTime or stop.plannedDepartureTime}"'
                     f'>{stop.stopPoint.name}</a></td>'
@@ -333,7 +333,7 @@ class UtilityPages:
         for sj in departures:
 
             stops = [{
-                "stopID": stop.stopPoint.stopArea.gid,
+                "stopID": stop.stopPoint.stopArea.gid if stop.stopPoint.stopArea is not None else "",
                 "stopName": stop.stopPoint.name,
                 "arrivalTime": getStopDelay(stop, ank=True) if stop.plannedArrivalTime else "-",
                 "departureTime": getStopDelay(stop) if stop.plannedDepartureTime else "-",

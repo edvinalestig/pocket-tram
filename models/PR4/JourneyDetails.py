@@ -22,4 +22,4 @@ class StopPoint(BaseModel):
     platform: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    stopArea: StopArea
+    stopArea: Optional[StopArea] = None
