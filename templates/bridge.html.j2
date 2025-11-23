@@ -6,13 +6,32 @@
     <meta name="lang" content="sv">
     <meta name="robots" content="noindex,nofollow">
     <title>Bron</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: {% if gc == "Open" %} #619656ff {% else %} #c05252ff {% endif %};
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            width: auto;
+        }
+        div {
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
 </head>
-<body style="font-family: sans-serif">
-    <h1>Hisingsbron</h1>
-    <p>Bilar & kollektivtrafik: {{ car }}</p>
-    <p>Gång & cykel: {{ gc }}</p>
-    <p>Båt: {{ boat }}</p>
-    <p>Meddelande från brovakt: {{ message }}</p>
-    <p>Senaste broöppningen: {{ lastOpening }}</p>
+<body>
+    <div>
+        <h1>Hisingsbron</h1>
+        {% if gc == "Closed" %}
+            <img src="/static/öppen.png" alt="Öppen bro">
+        {% else %}
+            <img src="/static/stängd.png" alt="Stängd bro">
+        {% endif %}
+        <p>Senaste broöppningen: {{ lastOpening }}</p>
+    </div>
 </body>
 </html>

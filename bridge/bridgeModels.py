@@ -32,8 +32,8 @@ HistorySignalsModelList = RootModel[list[HistorySignalsModel]]
 
 @dataclass
 class AllBridgeDataModel:
-    message: MessageModel
-    boat: SignalsModel
-    car: SignalsModel
+    # message: MessageModel
+    # boat: SignalsModel
+    # car: SignalsModel
     gc: SignalsModel
     openings: list[HistorySignalsModel]
