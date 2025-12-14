@@ -58,13 +58,13 @@ def getAllBridgeData() -> AllBridgeDataModel:
 
         # messages = pool.apply_async(bridge.bridgeMessages)
         # river_signals = pool.apply_async(bridge.riverSignals)
-        # road_signals = pool.apply_async(bridge.roadSignals)
-        shared_pathway_signals = pool.apply_async(bridge.sharedPathwaySignals)
+        road_signals = pool.apply_async(bridge.roadSignals)
+        # shared_pathway_signals = pool.apply_async(bridge.sharedPathwaySignals)
 
         return AllBridgeDataModel(
             # message=messages.get(),
             # boat=river_signals.get(),
-            # car=road_signals.get(),
-            gc=shared_pathway_signals.get(),
+            car=road_signals.get(),
+            # gc=shared_pathway_signals.get(),
             openings=history_signals.get()
         )

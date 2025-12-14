@@ -101,7 +101,7 @@ def bridge():
     penultimateChange: str = allData.openings[1].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
 
     lastOpening: str
-    if allData.gc.status == StatusEnum.Closed: # or allData.car.status == StatusEnum.Closed:
+    if allData.car.status == StatusEnum.Closed:
         lastOpening = f"Nu (sedan {lastChange})"
     else:
         lastOpening = f"{penultimateChange} - {lastChange}"
@@ -111,8 +111,8 @@ def bridge():
     template = env.get_template("bridge.html.j2")
 
     return template.render(
-        # car = allData.car.status.value,
-        gc = allData.gc.status.value,
+        car = allData.car.status.value,
+        # gc = allData.gc.status.value,
         # boat = allData.boat.status.value,
         # message = "-" if allData.message.message == "" else f'{allData.message.message} (utfärdat {allData.message.timeStamp.strftime("%d %b %Y kl. %H:%M")})',
         lastOpening = lastOpening
