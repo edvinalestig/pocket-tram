@@ -19,7 +19,8 @@ const places = {
     "hjalmar": "Hjalmar Brantingsplatsen",
     "brunnsparken": "Brunnsparken",
     "domkyrkan": "Domkyrkan",
-    "wieselgrensplatsen": "Wieselgrensplatsen"
+    "wieselgrensplatsen": "Wieselgrensplatsen",
+    "wieselgrensgatan": "Wieselgrensgatan"
 }
 
 function reset() {
