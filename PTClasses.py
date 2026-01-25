@@ -15,6 +15,7 @@ class Stop(Enum):
     Centralstationen        = 9021014001950000
     Chalmers                = 9021014001960000
     Domkyrkan               = 9021014002130000
+    Engdahlsgatan           = 9021014002230000
     Frihamnen               = 9021014002470000
     Frihamnsporten          = 9021014002472000
     Grönsakstorget          = 9021014002850000
@@ -23,8 +24,10 @@ class Stop(Enum):
     Järnvågen               = 9021014003645000
     Kapellplatsen           = 9021014003760000
     Korsvägen               = 9021014003980000
+    Kungsportsplatsen       = 9021014004090000
     Kungssten               = 9021014004100000
     Käringberget            = 9021014004230000
+    LillaBommen             = 9021014004380000
     Lindholmen              = 9021014004490000
     Lindholmspiren          = 9021014004493000
     Mariaplan               = 9021014004730000

@@ -10,15 +10,13 @@ const title = document.getElementById("title");
 const timeSpan = document.getElementById("time");
 const places = {
     "chalmers": "Chalmers",
-    "lgh": "Mamma",
     "jt": "Järntorget",
-    "huset": "Pappa",
-    "lindholmen": "Lindholmen",
     "centrum": "Centrum",
     "bjurslatt": "Bjurslätts torg",
     "hjalmar": "Hjalmar Brantingsplatsen",
     "brunnsparken": "Brunnsparken",
-    "domkyrkan": "Domkyrkan",
+    "lillabommen": "Lilla Bommen",
+    "kungsportsplatsen": "Kungsportsplatsen",
     "wieselgrensplatsen": "Wieselgrensplatsen",
     "wieselgrensgatan": "Wieselgrensgatan"
 }
