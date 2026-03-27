@@ -1,5 +1,6 @@
 from flask import Flask, request, send_file
 from jinja2 import Environment, FileSystemLoader
+from models.ErrorModel import ErrorModel
 from vasttrafik import Auth, PR4, TrafficSituations
 import json
 import dateutil.tz as tz
@@ -10,7 +11,7 @@ from os import environ
 
 from bridge.bridge import getAllBridgeData
 from bridge.bridgeModels import *
-from PTClasses import Stop, StopReq, Departure
+from PTClasses import Result, Stop, StopReq, Departure
 from models.PR4.DeparturesAndArrivals import DepartureAPIModel, GetDeparturesResponse
 from models.PR4.Positions import JourneyPositionList
 from models.TrafficSituations.TrafficSituations import TrafficSituation
@@ -85,8 +86,13 @@ def req():
         deps = depsAR.get()
         ts = tsAR.get()
 
+    stops = {sr.title: 
+             [d.model_dump() for d in dep.unwrap()] if dep.is_ok() else
+             {"error": {"code": str(dep.unwrap_err().errorCode), "message": dep.unwrap_err().errorMessage}}
+             for (sr,dep) in deps}
+
     return json.dumps({
-                "stops": {sr.title: [d.model_dump() for d in dep] for (sr,dep) in deps},
+                "stops": stops,
                 "ts": ts,
                 "time": timeNow
             })
@@ -118,7 +124,7 @@ def bridge():
         lastOpening = lastOpening
     )
 
-def mapStops(place: str) -> list[tuple[StopReq,list[Departure]]]:
+def mapStops(place: str) -> list[tuple[StopReq,Result[list[Departure],ErrorModel]]]:
     match place:
         case "jt":
             return getDepartures([
@@ -202,16 +208,19 @@ def compileStopReq(title: str,
     return StopReq(title=title, showCountdown=showCountdown, compileFirst=compileFirst, dest=dest or to.name, excludeLines=excludeLines, excludeDestinations=excludeDestinations, stop=fr, direction=to, startDateTime=timeNow) 
 
 # Takes a list of compiled dicts and returns a list of cleaned results
-def getDepartures(reqList: list[StopReq]) -> list[tuple[StopReq,list[Departure]]]:
+def getDepartures(reqList: list[StopReq]) -> list[tuple[StopReq,Result[list[Departure],ErrorModel]]]:
     responses = pr4.asyncDepartureBoards(reqList)
     return [clean(*resp) for resp in responses]
 
-def clean(sr: StopReq, resp: GetDeparturesResponse) -> tuple[StopReq, list[Departure]]:
-    deps: list[DepartureAPIModel] = resp.results
+def clean(sr: StopReq, resp: Result[GetDeparturesResponse,ErrorModel]) -> tuple[StopReq, Result[list[Departure], ErrorModel]]:
+    if resp.is_err():
+        return (sr, Result.Err(resp.unwrap_err()))
+
+    deps: list[DepartureAPIModel] = resp.unwrap().results
 
     if deps == None or deps == []:
         # No departures found
-        return (sr, [])
+        return (sr, Result.Ok([]))
 
     firstDeps = Departure(
         line="🚋",
@@ -269,7 +278,7 @@ def clean(sr: StopReq, resp: GetDeparturesResponse) -> tuple[StopReq, list[Depar
             sort.time = sort.time[:3]
             outArr.append(sort)
 
-    return (sr, sortDepartures(outArr))
+    return (sr, Result.Ok(sortDepartures(outArr)))
 
 def getDelay(dep: DepartureAPIModel) -> str:
     if dep.isCancelled:

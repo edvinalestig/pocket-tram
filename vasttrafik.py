@@ -159,7 +159,7 @@ class PR4():
             return Result.Err(ErrorModel.model_validate_json(response.text))
 
 
-    def asyncDepartureBoards(self, request_list: list[StopReq]) -> list[tuple[StopReq,GetDeparturesResponse]]:
+    def asyncDepartureBoards(self, request_list: list[StopReq]) -> list[tuple[StopReq,Result[GetDeparturesResponse,ErrorModel]]]:
         header = self.__getAuthHeader()
         url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
 
@@ -171,10 +171,13 @@ class PR4():
                 future = session.get(f"{url}/{req.stop.value}/departures", headers=header, params=req.getParams())
                 reqs.append((req,future))
 
-            responses = [(sr,req.result()) for (sr,req) in reqs]
+            responses: list[tuple[StopReq,Response]] = [(sr,req.result()) for (sr,req) in reqs]
 
         # Check for errors
-        return [(s, GetDeparturesResponse.model_validate_json(r.text)) for (s,r) in self.auth.checkResponses(responses)]
+        return [(s,
+                 Result.Ok(GetDeparturesResponse.model_validate_json(r.text)) if r.status_code == 200 else
+                 Result.Err(ErrorModel.model_validate_json(r.text))
+                 ) for (s,r) in responses]
 
 
     def arrivalBoard(self, gid: str, date_time: datetime, offset: int = 0) -> Result[GetArrivalsResponse,ErrorModel]:

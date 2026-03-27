@@ -71,6 +71,22 @@ function createBox(title, contents) {
     h3.classList.add("grouptitle");
     box.appendChild(h3);
 
+    if (contents.length == 0) {
+        let p = document.createElement("p");
+        p.textContent = "Inga avgångar";
+        box.appendChild(p);
+        return;
+    }
+
+    if (contents.error) {
+            let p = document.createElement("p");
+            p.innerHTML = "<b>Error från Västtrafik:</b><br>"
+                + "Kod: " + contents.error.code + "<br>"
+                + "Meddelande: " + contents.error.message;
+            box.appendChild(p);
+            return;
+        }
+
     for (let d of contents) {
         times = d.time;
         let row = createRow(
@@ -79,7 +95,6 @@ function createBox(title, contents) {
             d.bgColor + "; color: " + d.fgColor + ";");
         box.appendChild(row);
     }
-
 }
 
 function createRow(line, dir, d1, d2, d3, style) {
