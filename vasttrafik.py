@@ -49,42 +49,8 @@ class Auth():
 
 
     def ensureValidToken(self) -> None:
-        if self.tokenExpiry is None or self.tokenExpiry < datetime.now():
+        if self.tokenExpiry is None or self.tokenExpiry + timedelta(seconds=10) < datetime.now():
             self.__renewToken()
-
-
-    def checkResponse(self, response: Response) -> Response:
-        if response.status_code == 401:
-            self.__renewToken()
-
-            header: dict[str, str] = {"Authorization": self.token}
-            response = requests.get(response.url, headers=header)
-
-        response.raise_for_status()
-        return response
-
-
-    def checkResponses(self, response_list: list[tuple[StopReq,Response]]) -> list[tuple[StopReq,Response]]:
-        if all([r.status_code == 200 for (_,r) in response_list]):
-            return response_list
-        else:
-            print("Renewing token..")
-            self.__renewToken()
-            header: dict[str, str] = {"Authorization": self.token}
-
-            # Retry!
-            session = FuturesSession()
-            reqs = []
-            for (sr,resp) in response_list:
-                # Send the new requests
-                reqs.append((sr,session.get(resp.url, headers=header)))
-
-            # Get the results
-            resps: list[tuple[StopReq,Response]] = [(sr,req.result()) for (sr,req) in reqs]
-            for (_,res) in resps:
-                res.raise_for_status()
-
-            return resps
 
 
 class PR4():
@@ -227,8 +193,7 @@ class TrafficSituations():
     
     def __get(self, url) -> Response:
         header = self.__getAuthHeader()
-        response = requests.get(url, headers=header)
-        return self.auth.checkResponse(response)
+        return requests.get(url, headers=header)
 
     
     def trafficsituations(self) -> list[TSModels.TrafficSituation]:
@@ -274,8 +239,7 @@ class TrafficSituations():
 
             responses = [(_,req.result()) for (_,req) in reqs]
 
-        # Check for errors
-        trafficSituations = map(lambda r: TSModels.TrafficSituationList.model_validate_json(r[1].text).root, self.auth.checkResponses(responses))
+        trafficSituations = map(lambda r: TSModels.TrafficSituationList.model_validate_json(r[1].text).root, responses)
         return [item for sublist in trafficSituations for item in sublist]
 
 
