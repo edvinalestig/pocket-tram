@@ -1,6 +1,7 @@
 from enum import Enum
 from datetime import datetime, timezone
 from pydantic import BaseModel
+from typing import Generic, TypeVar, Union, Any
 
 from models.PR4.DeparturesAndArrivals import ServiceJourneyDetails
 from models.PR4.Positions import JourneyPosition
@@ -77,3 +78,51 @@ class Departure(BaseModel):
 class RouteMapData(BaseModel):
     geo: list[ServiceJourneyDetails]
     positions: list[JourneyPosition]
+
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
+
+class Result(Generic[T1, T2]):
+    """
+    Polymorphic Result type, similar to Rust's Result enum.
+    Use Result.Ok(value) or Result.Err(error) to construct.
+    """
+    def __init__(self, is_ok: bool, value: Any):
+        self._is_ok = is_ok
+        self._value = value
+
+    @classmethod
+    def Ok(cls, value: T1) -> 'Result[T1, T2]':
+        return cls(True, value)
+
+    @classmethod
+    def Err(cls, error: T2) -> 'Result[T1, T2]':
+        return cls(False, error)
+
+    def is_ok(self) -> bool:
+        return self._is_ok
+
+    def is_err(self) -> bool:
+        return not self._is_ok
+
+    def ok(self) -> Union[T1, None]:
+        return self._value if self._is_ok else None
+
+    def err(self) -> Union[T2, None]:
+        return self._value if not self._is_ok else None
+
+    def unwrap(self) -> T1:
+        if self._is_ok:
+            return self._value
+        raise ValueError(f"Called unwrap on Err: {self._value}")
+
+    def unwrap_err(self) -> T2:
+        if not self._is_ok:
+            return self._value
+        raise ValueError(f"Called unwrap_err on Ok: {self._value}")
+
+    def __repr__(self):
+        if self._is_ok:
+            return f"Ok({self._value!r})"
+        else:
+            return f"Err({self._value!r})"

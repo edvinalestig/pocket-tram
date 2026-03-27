@@ -1,20 +1,22 @@
 # coding: utf-8
 import base64
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import requests
 from requests import Response
 from requests_futures.sessions import FuturesSession
 
 from models.PR4.DeparturesAndArrivals import GetDeparturesResponse, GetArrivalsResponse, DepartureDetails
+from models.ErrorModel import ErrorModel
 import models.PR4.Positions as PR4Positions
 import models.PR4.Locations as PR4Locations
 import models.TrafficSituations.TrafficSituations as TSModels
-from PTClasses import StopReq
+from PTClasses import StopReq, Result
 
 class Auth():
     __credentials: str
     scope: str
     token: str
+    tokenExpiry: datetime
 
     def __init__(self, key: str, secret: str, scope: str) -> None:
         if key is None or secret is None or scope is None:
@@ -43,6 +45,12 @@ class Auth():
 
         responseDict: dict[str, str] = response.json()
         self.token = "Bearer " + responseDict["access_token"]
+        self.tokenExpiry = datetime.now() + timedelta(seconds=int(responseDict["expires_in"]))
+
+
+    def ensureValidToken(self) -> None:
+        if self.tokenExpiry is None or self.tokenExpiry < datetime.now():
+            self.__renewToken()
 
 
     def checkResponse(self, response: Response) -> Response:
@@ -86,12 +94,20 @@ class PR4():
         self.auth = auth
 
 
-    def locations_by_text(self, name: str) -> PR4Locations.GetLocationsResponse:
-        header = {"Authorization": self.auth.token}
+    def __getAuthHeader(self) -> dict[str,str]:
+        self.auth.ensureValidToken()
+        return {"Authorization": self.auth.token}
+
+
+    def locations_by_text(self, name: str) -> Result[PR4Locations.GetLocationsResponse, ErrorModel]:
+        header = self.__getAuthHeader()
         url = "https://ext-api.vasttrafik.se/pr/v4/locations/by-text"
 
-        response = requests.get(url, headers=header, params={"types":["stoparea"], "q": name})
-        return PR4Locations.GetLocationsResponse.model_validate_json(self.auth.checkResponse(response).text)
+        response = requests.get(url, headers=header, params={"types": ["stoparea"], "q": name})
+        if response.status_code == 200:
+            return Result.Ok(PR4Locations.GetLocationsResponse.model_validate_json(response.text))
+        else:
+            return Result.Err(ErrorModel.model_validate_json(response.text))
 
 
     def positions(self, 
@@ -102,10 +118,10 @@ class PR4():
                   detailsReferences: list[str] = [], 
                   lineDesignations: list[str] = [], 
                   limit: int = 100
-                  ) -> list[PR4Positions.JourneyPosition]: 
+                  ) -> Result[list[PR4Positions.JourneyPosition], ErrorModel]: 
         if not 1 <= limit <= 200: raise ValueError("Limit must be between 1 and 200")
 
-        header = {"Authorization": self.auth.token}
+        header = self.__getAuthHeader()
         url = "https://ext-api.vasttrafik.se/pr/v4/positions"
         params = {
             "lowerLeftLat": lowerLeftLat,
@@ -117,11 +133,14 @@ class PR4():
             "lineDesignations": lineDesignations
         }
         response: Response = requests.get(url, headers=header, params=params)
-        return PR4Positions.JourneyPositionList.model_validate_json(self.auth.checkResponse(response).text).root
+        if response.status_code == 200:
+            return Result.Ok(PR4Positions.JourneyPositionList.model_validate_json(response.text).root)
+        else:
+            return Result.Err(ErrorModel.model_validate_json(response.text))
 
 
-    def departureBoard(self, gid: str, date_time: datetime, offset: int = 0) -> GetDeparturesResponse:
-        header = {"Authorization": self.auth.token}
+    def departureBoard(self, gid: str, date_time: datetime, offset: int = 0) -> Result[GetDeparturesResponse,ErrorModel]:
+        header = self.__getAuthHeader()
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/departures"
         if date_time.tzinfo is None or date_time.tzinfo.utcoffset(date_time) is None:
             date_time = date_time.astimezone(timezone.utc)
@@ -133,11 +152,15 @@ class PR4():
             "maxDeparturesPerLineAndDirection": 100,
             "offset": offset
         })
-        return GetDeparturesResponse.model_validate_json(self.auth.checkResponse(response).text)
+
+        if response.status_code == 200:
+            return Result.Ok(GetDeparturesResponse.model_validate_json(response.text))
+        else:
+            return Result.Err(ErrorModel.model_validate_json(response.text))
 
 
     def asyncDepartureBoards(self, request_list: list[StopReq]) -> list[tuple[StopReq,GetDeparturesResponse]]:
-        header = {"Authorization": self.auth.token}
+        header = self.__getAuthHeader()
         url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
 
         # Start a session for the async requests
@@ -154,8 +177,8 @@ class PR4():
         return [(s, GetDeparturesResponse.model_validate_json(r.text)) for (s,r) in self.auth.checkResponses(responses)]
 
 
-    def arrivalBoard(self, gid: str, date_time: datetime, offset: int = 0) -> GetArrivalsResponse:
-        header = {"Authorization": self.auth.token}
+    def arrivalBoard(self, gid: str, date_time: datetime, offset: int = 0) -> Result[GetArrivalsResponse,ErrorModel]:
+        header = self.__getAuthHeader()
         url = f"https://ext-api.vasttrafik.se/pr/v4/stop-areas/{gid}/arrivals"
         if date_time.tzinfo is None or date_time.tzinfo.utcoffset(date_time) is None:
             date_time = date_time.astimezone(timezone.utc)
@@ -167,16 +190,23 @@ class PR4():
             "maxArrivalsPerLineAndDirection": 100,
             "offset": offset
         })
-        return GetArrivalsResponse(**self.auth.checkResponse(response).json())
+        if response.status_code == 200:
+            return Result.Ok(GetArrivalsResponse(**response.json()))
+        else:
+            return Result.Err(ErrorModel.model_validate_json(response.text))
 
 
-    def request(self, ref: str, gid: str, ank: bool, geo: bool = False) -> DepartureDetails:
+    def request(self, ref: str, gid: str, ank: bool, geo: bool = False) -> Result[DepartureDetails, ErrorModel]:
         base_url = "https://ext-api.vasttrafik.se/pr/v4/stop-areas"
         url = f"{base_url}/{gid}/{'arrivals' if ank else 'departures'}/{ref}/details?includes=servicejourneycalls"
-        if geo: url += "&includes=servicejourneycoordinates"
-        header = {"Authorization": self.auth.token}
+        if geo:
+            url += "&includes=servicejourneycoordinates"
+        header = self.__getAuthHeader()
         response: Response = requests.get(url, headers=header)
-        return DepartureDetails.model_validate_json(self.auth.checkResponse(response).text)
+        if response.status_code == 200:
+            return Result.Ok(DepartureDetails.model_validate_json(response.text))
+        else:
+            return Result.Err(ErrorModel.model_validate_json(response.text))
 
 
 class TrafficSituations():
@@ -186,9 +216,14 @@ class TrafficSituations():
         self.auth = auth
         self.url = "https://ext-api.vasttrafik.se/ts/v1/traffic-situations"
 
+
+    def __getAuthHeader(self) -> dict[str,str]:
+        self.auth.ensureValidToken()
+        return {"Authorization": self.auth.token}
+    
     
     def __get(self, url) -> Response:
-        header = {"Authorization": self.auth.token}
+        header = self.__getAuthHeader()
         response = requests.get(url, headers=header)
         return self.auth.checkResponse(response)
 
@@ -223,7 +258,7 @@ class TrafficSituations():
     
 
     def asyncStoparea(self, gid_list: list[int]) -> list[TSModels.TrafficSituation]:
-        header = {"Authorization": self.auth.token}
+        header = self.__getAuthHeader()
         url = f"{self.url}/stoparea"
 
         # Start a session for the async requests

@@ -37,7 +37,7 @@ def favicon():
 def seachStop():
     if (stop := request.args.get("stop")) is None:
         return "Add ?stop=xxx to the url"
-    return pr4.locations_by_text(stop).model_dump_json()
+    return pr4.locations_by_text(stop).unwrap().model_dump_json()
 
 @app.route("/utilities")
 def utilities():

@@ -60,11 +60,15 @@ class UtilityPages:
     def mainPage(self):
         return send_file("static/util.html")
 
-    def searchStop(self, args):
+    def searchStop(self, args) -> str:
         stopID: str
         stopName: str
         if args.get("stop"):
-            stop: list[Location] = self.pr4.locations_by_text(args.get("stop")).results
+            result = self.pr4.locations_by_text(args.get("stop"))
+            if result.is_err():
+                err = result.unwrap_err()
+                return f"<h1>Error från Västtrafik</h1> <p>Kod: {err.errorCode}<br>Meddelande: {err.errorMessage}</p>"
+            stop: list[Location] = result.unwrap().results
             if not stop:
                 return "<a href='/utilities'>Inga träffar</a>"
             stopName = stop[0].name
@@ -85,11 +89,13 @@ class UtilityPages:
 
         offset: int = args.get("offset", 0)
 
-        departures: GetDeparturesResponse = self.pr4.departureBoard(stopID, dateTime, offset)
+        result = self.pr4.departureBoard(stopID, dateTime, offset)
+        if not result.is_ok:
+            return f"<h1>Error från Västtrafik</h1> <p>Kod: {result.unwrap_err().errorCode}<br>Meddelande: {result.unwrap_err().errorMessage}</p>"
 
+        departures: GetDeparturesResponse = result.unwrap()
         if not departures.results:
             return "<a href='/utilities'>Inga avgångar</a>"
-
 
         types = {
             "bus": "🚌",
@@ -113,10 +119,10 @@ class UtilityPages:
         depRows = [(
             f'\n<tr style="border: 5px solid red;">'
             f"<td style='background-color: {dep.serviceJourney.line.backgroundColor}; \
-                         color: {dep.serviceJourney.line.foregroundColor}; \
-                         text-align: center; \
-                         border: 1px solid {dep.serviceJourney.line.borderColor};'> \
-                         {dep.serviceJourney.line.shortName}</td>"
+                        color: {dep.serviceJourney.line.foregroundColor}; \
+                        text-align: center; \
+                        border: 1px solid {dep.serviceJourney.line.borderColor};'> \
+                        {dep.serviceJourney.line.shortName}</td>"
             f"<td><a href='/simpleDepInfo?ref={dep.detailsReference}&gid={stopID}&ad=d'>{dep.serviceJourney.direction}</a></td>"
             f"<td style='text-align: center;'>{dep.plannedTime.strftime('%H:%M')}</td>"
             f"<td style='text-align: center;'>{dep.estimatedTime.strftime('%H:%M') if dep.estimatedTime is not None else '-'}</td>"
@@ -156,7 +162,11 @@ class UtilityPages:
         stopID: str
         stopName: str
         if args.get("stop"):
-            stop: list[Location] = self.pr4.locations_by_text(args["stop"]).results
+            result = self.pr4.locations_by_text(args["stop"])
+            if result.is_err():
+                err = result.unwrap_err()
+                return f"<h1>Error från Västtrafik</h1> <p>Kod: {err.errorCode}<br>Meddelande: {err.errorMessage}</p>"
+            stop: list[Location] = result.unwrap().results
             if not stop:
                 return "<a href='/utilities'>Inga träffar</a>"
             stopName = stop[0].name
@@ -177,7 +187,11 @@ class UtilityPages:
 
         offset = args.get("offset", 0)
 
-        departures: GetArrivalsResponse | GetDeparturesResponse = self.pr4.arrivalBoard(stopID, dateTime, offset) if isArrival else self.pr4.departureBoard(stopID, dateTime, offset)
+        result = self.pr4.arrivalBoard(stopID, dateTime, offset) if isArrival else self.pr4.departureBoard(stopID, dateTime, offset)
+        if result.is_err():
+            return f"<h1>Error från Västtrafik</h1> <p>Kod: {result.unwrap_err().errorCode}<br>Meddelande: {result.unwrap_err().errorMessage}</p>"
+
+        departures: GetArrivalsResponse | GetDeparturesResponse = result.unwrap()
         results = [
             {
                 "lineBgColor": dep.serviceJourney.line.backgroundColor,
@@ -236,7 +250,11 @@ class UtilityPages:
             return "<a href='/utilities'>Ingen referens</a>"
         gid = args.get("gid")
         ad = args.get("ad")
-        dep = self.resep.request(ref, gid, ank=ad=="a").get("serviceJourneys")
+        result = self.resep.request(ref, gid, ank=ad=="a")
+        if result.is_err():
+            err = result.unwrap_err()
+            return f"<h1>Error från Västtrafik</h1> <p>Kod: {err.errorCode}<br>Meddelande: {err.errorMessage}</p>"
+        dep = result.unwrap().get("serviceJourneys")
         if not dep:
             return "<a href='/utilities'>Ingen info<a>"
 
@@ -287,7 +305,11 @@ class UtilityPages:
             return "<a href='/utilities'>Ingen referens</a>"
         gid: str = args.get("gid")
         ad: Literal['a', 'd'] = args.get("ad")
-        departures: list[ServiceJourneyDetails] = self.pr4.request(ref, gid, ank=ad=="a").serviceJourneys
+        result = self.pr4.request(ref, gid, ank=ad=="a")
+        if result.is_err():
+            err = result.unwrap_err()
+            return f"<h1>Error från Västtrafik</h1> <p>Kod: {err.errorCode}<br>Meddelande: {err.errorMessage}</p>"
+        departures: list[ServiceJourneyDetails] = result.unwrap().serviceJourneys
         if not departures:
             return "<a href='/utilities'>Ingen info<a>"
 
@@ -366,7 +388,11 @@ class UtilityPages:
             return "<a href='/utilities'>Ingen referens</a>"
         gid = args.get("gid")
         ad: Literal['a', 'd'] = args.get("ad")
-        geo: list[ServiceJourneyDetails] = self.pr4.request(ref, gid, ank=ad=="a", geo=True).serviceJourneys
+        result = self.pr4.request(ref, gid, ank=ad=="a", geo=True)
+        if result.is_err():
+            err = result.unwrap_err()
+            return f"<h1>Error från Västtrafik</h1> <p>Kod: {err.errorCode}<br>Meddelande: {err.errorMessage}</p>"
+        geo: list[ServiceJourneyDetails] = result.unwrap().serviceJourneys
         positions: list[JourneyPosition] = self.position(args)
         return RouteMapData(geo=geo, positions=positions).model_dump_json()
 
@@ -380,9 +406,11 @@ class UtilityPages:
         line = args.getlist("line")
         if not ref and not line: return []
         if ref:
-            return self.pr4.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, [ref])
+            res = self.pr4.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, [ref])
+            return res.unwrap() if res.is_ok() else []
         else:
-            return self.pr4.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, lineDesignations=line)
+            res = self.pr4.positions(lowerLeftLat, lowerLeftLon, upperRightLat, upperRightLon, lineDesignations=line)
+            return res.unwrap() if res.is_ok() else []
 
 
 if __name__ == "__main__":
