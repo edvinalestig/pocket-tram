@@ -51,6 +51,17 @@ def getStopDelay(stop: CallDetails, ank=False) -> str:
     else:
         return plannedTime.strftime("%H:%M") + str(delay)
 
+def getDayName(day: datetime) -> str:
+    match day.weekday():
+        case 0: return "Måndag"
+        case 1: return "Tisdag"
+        case 2: return "Onsdag"
+        case 3: return "Torsdag"
+        case 4: return "Fredag"
+        case 5: return "Lördag"
+        case 6: return "Söndag"
+    return ""
+
 ###############################
 
 class UtilityPages:
@@ -219,6 +230,9 @@ class UtilityPages:
             dtime, offset = params["startDateTime"], params.get("offset", 0)
             nextHref = f"/findDepartures?stop={stopName}&datetime={dtime}&offset={offset}{'&arrivals=on' if isArrival else ''}"
 
+        dateTime6h: str = (dateTime + timedelta(hours=6)).isoformat()
+        add6hHref: str = f"/findDepartures?stop={stopName}&datetime={dateTime6h}{'&arrivals=on' if isArrival else ''}"
+
         # Generate html using jinja2
         env = Environment(loader=FileSystemLoader("templates"))
         template = env.get_template("util_stop.html.j2")
@@ -227,9 +241,10 @@ class UtilityPages:
             departures = results,
             stopName = stopName,
             stopID = stopID,
-            dateTime = dateTime.strftime('%Y-%m-%d, %H:%M'),
+            dateTime = getDayName(dateTime) + " " +dateTime.strftime('%Y-%m-%d, %H:%M'),
             nextHref = nextHref,
             prevHref = prevHref,
+            add6hHref = add6hHref,
             isArrival = isArrival
         )
 

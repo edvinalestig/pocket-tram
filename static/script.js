@@ -18,7 +18,8 @@ const places = {
     "lillabommen": "Lilla Bommen",
     "kungsportsplatsen": "Kungsportsplatsen",
     "wieselgrensplatsen": "Wieselgrensplatsen",
-    "wieselgrensgatan": "Wieselgrensgatan"
+    "wieselgrensgatan": "Wieselgrensgatan",
+    "grönsakstorget": "Grönsakstorget"
 }
 
 function reset() {

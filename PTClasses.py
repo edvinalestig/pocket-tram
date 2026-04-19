@@ -33,12 +33,14 @@ class Stop(Enum):
     Lindholmspiren          = 9021014004493000
     Mariaplan               = 9021014004730000
     Marklandsgatan          = 9021014004760000
+    NilsEricsonTerminalen   = 9021014004940000
     Nordstan                = 9021014004945000
     NyaVarvetsTorg          = 9021014005105000
     NyaVarvsallén           = 9021014005100000
     Regnbågsgatan           = 9021014005465000
     Stenpiren               = 9021014006242000
     Svingeln                = 9021014006480000
+    Pilgatan                = 9021014005279000
     Tolvskillingsgatan      = 9021014006790000
     UlleviNorra             = 9021014007171000
     Valand                  = 9021014007220000
@@ -65,7 +67,7 @@ class StopReq(BaseModel):
             "maxDeparturesPerLineAndDirection": 3,
             "directionGid": self.direction.value,
             "startDateTime": self.startDateTime.astimezone(timezone.utc).isoformat(),
-            "limit": 100
+            "limit": 30
         }
 
 class Departure(BaseModel):

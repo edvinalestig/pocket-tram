@@ -114,8 +114,8 @@ class PR4():
         response = requests.get(url, headers=header, params={
             "startDateTime": date_time.isoformat(), 
             "limit": 25,
-            "timeSpanInMinutes": 1339,
-            "maxDeparturesPerLineAndDirection": 100,
+            "timeSpanInMinutes": 720, # 12h
+            "maxDeparturesPerLineAndDirection": 25,
             "offset": offset
         })
 
