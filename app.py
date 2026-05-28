@@ -103,14 +103,17 @@ def bridge():
     allData: AllBridgeDataModel = getAllBridgeData()
     allData.openings.sort(reverse=True, key=lambda x: x.Timestamp)
 
-    lastChange: str = allData.openings[0].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%H:%M")
-    penultimateChange: str = allData.openings[1].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
-
     lastOpening: str
-    if allData.car.status == StatusEnum.Closed:
-        lastOpening = f"Nu (sedan {lastChange})"
+    if len(allData.openings) < 2:
+        lastOpening = "Ingen data"
     else:
-        lastOpening = f"{penultimateChange} - {lastChange}"
+        lastChange: str = allData.openings[0].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%H:%M")
+        penultimateChange: str = allData.openings[1].Timestamp.astimezone(tz.gettz("Europe/Stockholm")).strftime("%d %b %Y kl. %H:%M")
+
+        if allData.car.status == StatusEnum.Closed:
+            lastOpening = f"Nu (sedan {lastChange})"
+        else:
+            lastOpening = f"{penultimateChange} - {lastChange}"
 
     # Generate html using jinja2
     env = Environment(loader=FileSystemLoader("templates"))

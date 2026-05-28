@@ -52,7 +52,7 @@ def getAllBridgeData() -> AllBridgeDataModel:
     bridge = Bridge()
     with mp.Pool(processes=4) as pool:
         now: datetime = datetime.now(tz.UTC)
-        fromDate: str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        fromDate: str = (now - timedelta(days=2)).strftime("%Y-%m-%d")
         toDate: str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
         history_signals = pool.apply_async(bridge.historySignals, args=(fromDate, toDate, AudienceEnum.GC))
 
