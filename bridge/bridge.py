@@ -54,7 +54,7 @@ def getAllBridgeData() -> AllBridgeDataModel:
         now: datetime = datetime.now(tz.UTC)
         fromDate: str = (now - timedelta(days=2)).strftime("%Y-%m-%d")
         toDate: str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
-        history_signals = pool.apply_async(bridge.historySignals, args=(fromDate, toDate, AudienceEnum.GC))
+        history_signals = pool.apply_async(bridge.historySignals, args=(fromDate, toDate, AudienceEnum.Car))
 
         # messages = pool.apply_async(bridge.bridgeMessages)
         # river_signals = pool.apply_async(bridge.riverSignals)
